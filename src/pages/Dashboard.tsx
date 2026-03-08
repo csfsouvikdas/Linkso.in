@@ -336,7 +336,7 @@ export default function Dashboard() {
               </div>
             </div>
             {/* Card Customization */}
-            <div className="glass rounded-xl p-6 space-y-5">
+            <div className="bg-card rounded-2xl p-6 space-y-5 shadow-sm border border-border">
               <h2 className="text-lg font-heading font-semibold">Profile Card Style</h2>
               
               {/* Background Color */}
@@ -422,33 +422,38 @@ export default function Dashboard() {
             </div>
 
             {/* Live Preview */}
-            <div className="glass rounded-xl p-6 space-y-3">
+            <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm border border-border">
               <h2 className="text-lg font-heading font-semibold">Live Preview</h2>
+              <div className="flex justify-center">
+                <div className="w-[280px] rounded-[2rem] border-[6px] border-foreground/10 shadow-xl overflow-hidden">
               <div
-                className="rounded-2xl p-6 flex flex-col items-center gap-4 min-h-[200px] transition-all"
+                className="p-6 flex flex-col items-center gap-3 min-h-[420px] transition-all"
                 style={{
                   background: profile?.theme === "gradient" ? "linear-gradient(135deg, #667eea, #764ba2)" : (profile?.bg_color || "#FFFFFF"),
                   color: ["dark", "gradient"].includes(profile?.theme || "") || (profile?.bg_color && parseInt(profile.bg_color.replace("#",""), 16) < 0x808080) ? "#ffffff" : "#1a1a1a",
                 }}
               >
-                <div className="w-16 h-16 rounded-full overflow-hidden bg-black/10 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center mt-4" style={{ background: "rgba(128,128,128,0.15)" }}>
                   {profile?.avatar_url ? (
                     <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-xl font-bold">{profile?.display_name?.[0]?.toUpperCase() || "?"}</span>
                   )}
-                </div>
-                <p className="font-heading font-bold">{profile?.display_name || "Your Name"}</p>
-                {profile?.bio && <p className="text-sm opacity-70">{profile.bio}</p>}
+                    </div>
+                    <p className="font-heading font-bold text-sm">{profile?.display_name || "Your Name"}</p>
+                {profile?.bio && <p className="text-xs opacity-70 text-center">{profile.bio}</p>}
                 <div className="w-full max-w-[250px] space-y-2">
                   {links.slice(0, 3).map(link => {
                     const btnRadius = profile?.button_style === "pill" ? "9999px" : profile?.button_style === "sharp" ? "0" : "16px";
-                    return (
-                      <div key={link.id} className="w-full p-2.5 text-center text-xs font-medium border border-current/20 opacity-80" style={{ borderRadius: btnRadius, background: "rgba(128,128,128,0.15)" }}>
-                        {link.title}
-                      </div>
+                        return (
+                          <div key={link.id} className="w-full p-2.5 text-center text-xs font-medium flex items-center justify-center gap-2" style={{ borderRadius: btnRadius, background: "rgba(128,128,128,0.15)" }}>
+                            <PlatformIcon platform={link.platform} className="h-3.5 w-3.5" />
+                            {link.title}
+                          </div>
                     );
                   })}
+                </div>
+                  </div>
                 </div>
               </div>
             </div>
