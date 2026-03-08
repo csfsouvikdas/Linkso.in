@@ -441,7 +441,7 @@ export default function Dashboard() {
                   )}
                     </div>
                     <p className="font-heading font-bold text-sm">{profile?.display_name || "Your Name"}</p>
-                {profile?.bio && <p className="text-sm opacity-70">{profile.bio}</p>}
+                {profile?.bio && <p className="text-xs opacity-70 text-center">{profile.bio}</p>}
                 <div className="w-full max-w-[250px] space-y-2">
                   {links.slice(0, 3).map(link => {
                     const btnRadius = profile?.button_style === "pill" ? "9999px" : profile?.button_style === "sharp" ? "0" : "16px";
