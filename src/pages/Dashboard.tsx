@@ -445,10 +445,11 @@ export default function Dashboard() {
                 <div className="w-full max-w-[250px] space-y-2">
                   {links.slice(0, 3).map(link => {
                     const btnRadius = profile?.button_style === "pill" ? "9999px" : profile?.button_style === "sharp" ? "0" : "16px";
-                    return (
-                      <div key={link.id} className="w-full p-2.5 text-center text-xs font-medium border border-current/20 opacity-80" style={{ borderRadius: btnRadius, background: "rgba(128,128,128,0.15)" }}>
-                        {link.title}
-                      </div>
+                        return (
+                          <div key={link.id} className="w-full p-2.5 text-center text-xs font-medium flex items-center justify-center gap-2" style={{ borderRadius: btnRadius, background: "rgba(128,128,128,0.15)" }}>
+                            <PlatformIcon platform={link.platform} className="h-3.5 w-3.5" />
+                            {link.title}
+                          </div>
                     );
                   })}
                 </div>
