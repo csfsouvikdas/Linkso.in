@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PlatformIcon } from "@/components/PlatformIcon";
+import { platformLabels, type Platform } from "@/utils/detectPlatform";
 import { motion } from "framer-motion";
 import { TreesIcon } from "lucide-react";
 import type { UserProfile, UserLink } from "@/types";
@@ -49,7 +50,6 @@ export default function PublicProfile() {
   };
 
   const handleLinkClick = async (link: UserLink) => {
-    // Record click
     await supabase.from("analytics_clicks").insert({
       link_id: link.id,
       user_id: link.user_id,
@@ -90,8 +90,14 @@ export default function PublicProfile() {
       >
         {/* Profile header */}
         <div className="flex flex-col items-center gap-4 text-center">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/40 to-primary/10 flex items-center justify-center text-3xl font-heading font-bold border-2 border-primary/20">
-            {profile?.display_name?.[0]?.toUpperCase() || "?"}
+          <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-primary/40 to-primary/10 flex items-center justify-center border-2 border-primary/20">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-3xl font-heading font-bold text-primary-foreground">
+                {profile?.display_name?.[0]?.toUpperCase() || "?"}
+              </span>
+            )}
           </div>
           <div>
             <h1 className="text-xl font-heading font-bold">{profile?.display_name}</h1>
@@ -99,7 +105,7 @@ export default function PublicProfile() {
           </div>
         </div>
 
-        {/* Links */}
+        {/* Links with platform icons */}
         <div className="space-y-3">
           {links.map((link, i) => (
             <motion.button
@@ -108,10 +114,17 @@ export default function PublicProfile() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               onClick={() => handleLinkClick(link)}
-              className="w-full glass rounded-2xl p-4 flex items-center gap-4 hover-lift cursor-pointer text-left"
+              className="w-full glass rounded-2xl p-4 flex items-center gap-4 hover-lift cursor-pointer text-left group"
             >
-              <PlatformIcon platform={link.platform} className="text-primary shrink-0" />
-              <span className="flex-1 font-medium">{link.title}</span>
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                <PlatformIcon platform={link.platform} className="text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="font-medium block">{link.title}</span>
+                <span className="text-xs text-muted-foreground truncate block">
+                  {platformLabels[link.platform as Platform] || "Link"}
+                </span>
+              </div>
             </motion.button>
           ))}
         </div>
