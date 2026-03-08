@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { TreesIcon, LinkIcon, Palette, BarChart3, Settings, ExternalLink, Copy, Plus, GripVertical, Trash2, LogOut } from "lucide-react";
+import { TreesIcon, LinkIcon, Palette, BarChart3, Settings, ExternalLink, Copy, Plus, GripVertical, Trash2, LogOut, Camera, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
