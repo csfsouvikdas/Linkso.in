@@ -14,7 +14,128 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analytics_clicks: {
+        Row: {
+          clicked_at: string
+          id: string
+          link_id: string
+          user_id: string
+        }
+        Insert: {
+          clicked_at?: string
+          id?: string
+          link_id: string
+          user_id: string
+        }
+        Update: {
+          clicked_at?: string
+          id?: string
+          link_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_clicks_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_views: {
+        Row: {
+          id: string
+          user_id: string
+          visited_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          visited_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          visited_at?: string
+        }
+        Relationships: []
+      }
+      links: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          platform: string
+          position: number
+          title: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          platform?: string
+          position?: number
+          title?: string
+          url?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          platform?: string
+          position?: number
+          title?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bg_color: string | null
+          bio: string | null
+          button_style: string | null
+          created_at: string
+          display_name: string
+          font: string | null
+          id: string
+          theme: string | null
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bg_color?: string | null
+          bio?: string | null
+          button_style?: string | null
+          created_at?: string
+          display_name?: string
+          font?: string | null
+          id: string
+          theme?: string | null
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bg_color?: string | null
+          bio?: string | null
+          button_style?: string | null
+          created_at?: string
+          display_name?: string
+          font?: string | null
+          id?: string
+          theme?: string | null
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
