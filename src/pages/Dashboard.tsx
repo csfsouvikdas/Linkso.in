@@ -255,6 +255,53 @@ export default function Dashboard() {
         {activeTab === "appearance" && (
           <div className="max-w-2xl mx-auto space-y-6">
             <h1 className="text-2xl font-heading font-bold">Appearance</h1>
+            
+            {/* Profile Picture Upload */}
+            <div className="glass rounded-xl p-6 space-y-4">
+              <label className="text-sm font-medium">Profile Picture</label>
+              <div className="flex items-center gap-6">
+                <div className="relative group">
+                  <div className="w-24 h-24 rounded-full overflow-hidden bg-secondary flex items-center justify-center border-2 border-border">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-2xl font-heading font-bold text-muted-foreground">
+                        {profile?.display_name?.[0]?.toUpperCase() || "?"}
+                      </span>
+                    )}
+                  </div>
+                  <label className="absolute inset-0 rounded-full bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                    <Camera className="h-6 w-6 text-foreground" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !user) return;
+                        const ext = file.name.split('.').pop();
+                        const filePath = `${user.id}/avatar.${ext}`;
+                        
+                        const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+                        if (uploadError) { toast.error("Upload failed"); return; }
+                        
+                        const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+                        const avatarUrl = urlData.publicUrl + '?t=' + Date.now();
+                        
+                        await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", user.id);
+                        setProfile(p => p ? { ...p, avatar_url: avatarUrl } : p);
+                        toast.success("Profile picture updated!");
+                      }}
+                    />
+                  </label>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Upload a photo</p>
+                  <p className="text-xs text-muted-foreground">JPG, PNG or GIF. Max 2MB.</p>
+                </div>
+              </div>
+            </div>
+
             <div className="glass rounded-xl p-6 space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Display Name</label>
