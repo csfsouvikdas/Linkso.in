@@ -439,8 +439,8 @@ export default function Dashboard() {
                   ) : (
                     <span className="text-xl font-bold">{profile?.display_name?.[0]?.toUpperCase() || "?"}</span>
                   )}
-                </div>
-                <p className="font-heading font-bold">{profile?.display_name || "Your Name"}</p>
+                    </div>
+                    <p className="font-heading font-bold text-sm">{profile?.display_name || "Your Name"}</p>
                 {profile?.bio && <p className="text-sm opacity-70">{profile.bio}</p>}
                 <div className="w-full max-w-[250px] space-y-2">
                   {links.slice(0, 3).map(link => {
