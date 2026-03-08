@@ -191,13 +191,25 @@ export default function Dashboard() {
             </div>
 
             {profile && (
-              <div className="glass rounded-xl p-4 flex items-center justify-between">
-                <span className="text-sm text-muted-foreground truncate">
-                  {window.location.origin}/{profile.username}
-                </span>
-                <Button variant="secondary" size="sm" onClick={copyLink}>
-                  <Copy className="h-4 w-4" />
-                </Button>
+              <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                  <span className="text-xs font-semibold text-primary uppercase tracking-wider">Your unique Linktree</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 bg-secondary/60 rounded-xl px-4 py-3 font-mono text-sm truncate">
+                    {window.location.origin}/{profile.username}
+                  </div>
+                  <Button variant="hero" size="sm" onClick={copyLink}>
+                    <Copy className="h-4 w-4 mr-2" /> Copy
+                  </Button>
+                  <Button variant="hero-outline" size="sm" asChild>
+                    <a href={`/${profile.username}`} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Share this link in your social media bios — it's unique to you!</p>
               </div>
             )}
 
