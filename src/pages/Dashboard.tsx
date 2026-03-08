@@ -336,7 +336,7 @@ export default function Dashboard() {
               </div>
             </div>
             {/* Card Customization */}
-            <div className="glass rounded-xl p-6 space-y-5">
+            <div className="bg-card rounded-2xl p-6 space-y-5 shadow-sm border border-border">
               <h2 className="text-lg font-heading font-semibold">Profile Card Style</h2>
               
               {/* Background Color */}
