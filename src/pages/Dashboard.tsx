@@ -120,8 +120,12 @@ export default function Dashboard() {
 
         {profile && (
           <div className="flex items-center gap-3 p-3 glass rounded-xl">
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold">
-              {profile.display_name?.[0]?.toUpperCase() || "?"}
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold overflow-hidden">
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                profile.display_name?.[0]?.toUpperCase() || "?"
+              )}
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium truncate">{profile.display_name}</p>
