@@ -433,7 +433,7 @@ export default function Dashboard() {
                   color: ["dark", "gradient"].includes(profile?.theme || "") || (profile?.bg_color && parseInt(profile.bg_color.replace("#",""), 16) < 0x808080) ? "#ffffff" : "#1a1a1a",
                 }}
               >
-                <div className="w-16 h-16 rounded-full overflow-hidden bg-black/10 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center mt-4" style={{ background: "rgba(128,128,128,0.15)" }}>
                   {profile?.avatar_url ? (
                     <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                   ) : (
