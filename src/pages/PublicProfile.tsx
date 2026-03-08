@@ -79,10 +79,16 @@ export default function PublicProfile() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background flex flex-col items-center px-4 py-12">
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-primary/5 rounded-full blur-[120px]" />
+  const bgStyle = profile?.theme === "gradient"
+    ? "linear-gradient(135deg, #667eea, #764ba2)"
+    : profile?.bg_color || "#FFFFFF";
+  const isDark = profile?.theme === "dark" || profile?.theme === "gradient" ||
+    (profile?.bg_color && parseInt(profile.bg_color.replace("#", ""), 16) < 0x808080);
+  const textColor = isDark ? "#ffffff" : "#1a1a1a";
+  const btnRadius = profile?.button_style === "pill" ? "9999px" : profile?.button_style === "sharp" ? "0" : "16px";
 
+  return (
+    <div className="min-h-screen flex flex-col items-center px-4 py-12" style={{ background: bgStyle, color: textColor }}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -90,18 +96,18 @@ export default function PublicProfile() {
       >
         {/* Profile header */}
         <div className="flex flex-col items-center gap-4 text-center">
-          <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-primary/40 to-primary/10 flex items-center justify-center border-2 border-primary/20">
+          <div className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center border-2" style={{ borderColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)", background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)" }}>
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-3xl font-heading font-bold text-primary-foreground">
+              <span className="text-3xl font-heading font-bold">
                 {profile?.display_name?.[0]?.toUpperCase() || "?"}
               </span>
             )}
           </div>
           <div>
             <h1 className="text-xl font-heading font-bold">{profile?.display_name}</h1>
-            {profile?.bio && <p className="text-sm text-muted-foreground mt-1">{profile.bio}</p>}
+            {profile?.bio && <p className="text-sm mt-1" style={{ opacity: 0.7 }}>{profile.bio}</p>}
           </div>
         </div>
 
@@ -114,14 +120,20 @@ export default function PublicProfile() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               onClick={() => handleLinkClick(link)}
-              className="w-full glass rounded-2xl p-4 flex items-center gap-4 hover-lift cursor-pointer text-left group"
+              className="w-full p-4 flex items-center gap-4 cursor-pointer text-left group transition-transform hover:scale-[1.02]"
+              style={{
+                borderRadius: btnRadius,
+                background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)"}`,
+                backdropFilter: "blur(8px)",
+              }}
             >
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                <PlatformIcon platform={link.platform} className="text-primary" />
+              <div className="w-10 h-10 flex items-center justify-center shrink-0" style={{ borderRadius: btnRadius === "0" ? "4px" : "12px", background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.07)" }}>
+                <PlatformIcon platform={link.platform} />
               </div>
               <div className="flex-1 min-w-0">
                 <span className="font-medium block">{link.title}</span>
-                <span className="text-xs text-muted-foreground truncate block">
+                <span className="text-xs block" style={{ opacity: 0.6 }}>
                   {platformLabels[link.platform as Platform] || "Link"}
                 </span>
               </div>
@@ -130,11 +142,11 @@ export default function PublicProfile() {
         </div>
 
         {links.length === 0 && (
-          <p className="text-center text-muted-foreground text-sm">No links added yet.</p>
+          <p className="text-center text-sm" style={{ opacity: 0.5 }}>No links added yet.</p>
         )}
 
         {/* Branding */}
-        <div className="flex items-center justify-center gap-2 pt-8 opacity-40 hover:opacity-70 transition-opacity">
+        <div className="flex items-center justify-center gap-2 pt-8" style={{ opacity: 0.3 }}>
           <TreesIcon className="h-4 w-4" />
           <Link to="/" className="text-xs">Made with Linktree</Link>
         </div>
