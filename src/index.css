@@ -91,6 +91,6 @@
 
   .hover-lift:hover {
     transform: translateY(-4px);
-    box-shadow: 0 10px 40px hsla(120, 100%, 55%, 0.15);
+    box-shadow: 0 10px 40px hsla(152, 76%, 42%, 0.1);
   }
 }
