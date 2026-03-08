@@ -474,15 +474,80 @@ export default function Dashboard() {
         {activeTab === "settings" && (
           <div className="max-w-2xl mx-auto space-y-6">
             <h1 className="text-2xl font-heading font-bold">Settings</h1>
-            <div className="glass rounded-xl p-6 space-y-4">
+
+            {/* Email */}
+            <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm border border-border">
+              <h2 className="text-lg font-heading font-semibold">Change Email</h2>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Email</label>
-                <Input value={user?.email || ""} disabled className="bg-secondary/50 border-border opacity-50" />
+                <label className="text-sm font-medium">Current Email</label>
+                <p className="text-sm text-muted-foreground">{user?.email}</p>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Username</label>
-                <Input value={profile?.username || ""} disabled className="bg-secondary/50 border-border opacity-50" />
+                <label className="text-sm font-medium">New Email</label>
+                <Input
+                  placeholder="newemail@example.com"
+                  id="new-email"
+                  type="email"
+                  className="bg-secondary/50 border-border"
+                />
               </div>
+              <Button
+                variant="hero"
+                size="sm"
+                onClick={async () => {
+                  const newEmail = (document.getElementById("new-email") as HTMLInputElement)?.value;
+                  if (!newEmail) { toast.error("Enter a new email"); return; }
+                  const { error } = await supabase.auth.updateUser({ email: newEmail });
+                  if (error) { toast.error(error.message); return; }
+                  toast.success("Confirmation sent to your new email!");
+                  (document.getElementById("new-email") as HTMLInputElement).value = "";
+                }}
+              >
+                Update Email
+              </Button>
+            </div>
+
+            {/* Username */}
+            <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm border border-border">
+              <h2 className="text-lg font-heading font-semibold">Change Username</h2>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Current Username</label>
+                <p className="text-sm text-muted-foreground">@{profile?.username}</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">New Username</label>
+                <Input
+                  placeholder="newusername"
+                  id="new-username"
+                  className="bg-secondary/50 border-border"
+                  onChange={(e) => {
+                    e.target.value = e.target.value.replace(/[^a-zA-Z0-9_]/g, "").toLowerCase();
+                  }}
+                />
+              </div>
+              <Button
+                variant="hero"
+                size="sm"
+                onClick={async () => {
+                  const newUsername = (document.getElementById("new-username") as HTMLInputElement)?.value?.toLowerCase();
+                  if (!newUsername || newUsername.length < 3) { toast.error("Username must be at least 3 characters"); return; }
+                  // Check availability
+                  const { data: existing } = await supabase.from("profiles").select("id").eq("username", newUsername).maybeSingle();
+                  if (existing) { toast.error("Username is already taken"); return; }
+                  const { error } = await supabase.from("profiles").update({ username: newUsername }).eq("id", user.id);
+                  if (error) { toast.error(error.message); return; }
+                  setProfile(p => p ? { ...p, username: newUsername } : p);
+                  toast.success("Username updated!");
+                  (document.getElementById("new-username") as HTMLInputElement).value = "";
+                }}
+              >
+                Update Username
+              </Button>
+            </div>
+
+            {/* Danger Zone */}
+            <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm border border-destructive/30">
+              <h2 className="text-lg font-heading font-semibold text-destructive">Danger Zone</h2>
               <Button variant="destructive" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Log out
