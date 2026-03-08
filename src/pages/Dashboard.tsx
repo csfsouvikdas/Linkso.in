@@ -335,8 +335,122 @@ export default function Dashboard() {
                 <p className="text-xs text-muted-foreground">{(profile?.bio || "").length}/80</p>
               </div>
             </div>
-            <div className="glass rounded-xl p-6">
-              <p className="text-sm text-muted-foreground">More customization options (themes, button styles, backgrounds) coming soon!</p>
+            {/* Card Customization */}
+            <div className="glass rounded-xl p-6 space-y-5">
+              <h2 className="text-lg font-heading font-semibold">Profile Card Style</h2>
+              
+              {/* Background Color */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Card Background Color</label>
+                <div className="flex flex-wrap gap-3">
+                  {["#FFFFFF", "#F0FDF4", "#F0F9FF", "#FFF7ED", "#FDF2F8", "#F5F3FF", "#1A1A2E", "#0F172A", "#18181B"].map(color => (
+                    <button
+                      key={color}
+                      onClick={async () => {
+                        setProfile(p => p ? { ...p, bg_color: color } : p);
+                        await supabase.from("profiles").update({ bg_color: color }).eq("id", user.id);
+                        toast.success("Background updated!");
+                      }}
+                      className={`w-10 h-10 rounded-xl border-2 transition-all ${profile?.bg_color === color ? "border-primary scale-110 shadow-md" : "border-border hover:scale-105"}`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                  <label className="w-10 h-10 rounded-xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary transition-colors">
+                    <Palette className="h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="color"
+                      value={profile?.bg_color || "#FFFFFF"}
+                      className="hidden"
+                      onChange={async (e) => {
+                        const val = e.target.value;
+                        setProfile(p => p ? { ...p, bg_color: val } : p);
+                        await supabase.from("profiles").update({ bg_color: val }).eq("id", user.id);
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Button Style */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Button Style</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { value: "rounded", label: "Rounded", cls: "rounded-2xl" },
+                    { value: "pill", label: "Pill", cls: "rounded-full" },
+                    { value: "sharp", label: "Sharp", cls: "rounded-none" },
+                  ].map(style => (
+                    <button
+                      key={style.value}
+                      onClick={async () => {
+                        setProfile(p => p ? { ...p, button_style: style.value } : p);
+                        await supabase.from("profiles").update({ button_style: style.value }).eq("id", user.id);
+                        toast.success("Button style updated!");
+                      }}
+                      className={`p-3 border-2 ${style.cls} text-sm font-medium transition-all ${profile?.button_style === style.value ? "border-primary bg-primary/10 text-primary" : "border-border bg-secondary/30 text-muted-foreground hover:border-primary/50"}`}
+                    >
+                      {style.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Theme */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Profile Theme</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { value: "light", label: "Light", bg: "#FFFFFF", fg: "#1a1a1a" },
+                    { value: "dark", label: "Dark", bg: "#1A1A2E", fg: "#ffffff" },
+                    { value: "gradient", label: "Gradient", bg: "linear-gradient(135deg, #667eea, #764ba2)", fg: "#ffffff" },
+                  ].map(t => (
+                    <button
+                      key={t.value}
+                      onClick={async () => {
+                        setProfile(p => p ? { ...p, theme: t.value } : p);
+                        await supabase.from("profiles").update({ theme: t.value }).eq("id", user.id);
+                        toast.success("Theme updated!");
+                      }}
+                      className={`p-4 rounded-xl border-2 text-sm font-medium transition-all ${profile?.theme === t.value ? "border-primary scale-105 shadow-md" : "border-border hover:border-primary/50"}`}
+                      style={{ background: t.bg, color: t.fg }}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Live Preview */}
+            <div className="glass rounded-xl p-6 space-y-3">
+              <h2 className="text-lg font-heading font-semibold">Live Preview</h2>
+              <div
+                className="rounded-2xl p-6 flex flex-col items-center gap-4 min-h-[200px] transition-all"
+                style={{
+                  background: profile?.theme === "gradient" ? "linear-gradient(135deg, #667eea, #764ba2)" : (profile?.bg_color || "#FFFFFF"),
+                  color: ["dark", "gradient"].includes(profile?.theme || "") || (profile?.bg_color && parseInt(profile.bg_color.replace("#",""), 16) < 0x808080) ? "#ffffff" : "#1a1a1a",
+                }}
+              >
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-black/10 flex items-center justify-center">
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xl font-bold">{profile?.display_name?.[0]?.toUpperCase() || "?"}</span>
+                  )}
+                </div>
+                <p className="font-heading font-bold">{profile?.display_name || "Your Name"}</p>
+                {profile?.bio && <p className="text-sm opacity-70">{profile.bio}</p>}
+                <div className="w-full max-w-[250px] space-y-2">
+                  {links.slice(0, 3).map(link => {
+                    const btnRadius = profile?.button_style === "pill" ? "9999px" : profile?.button_style === "sharp" ? "0" : "16px";
+                    return (
+                      <div key={link.id} className="w-full p-2.5 text-center text-xs font-medium border border-current/20 opacity-80" style={{ borderRadius: btnRadius, background: "rgba(128,128,128,0.15)" }}>
+                        {link.title}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         )}
