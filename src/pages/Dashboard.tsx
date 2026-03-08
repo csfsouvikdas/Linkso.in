@@ -422,10 +422,12 @@ export default function Dashboard() {
             </div>
 
             {/* Live Preview */}
-            <div className="glass rounded-xl p-6 space-y-3">
+            <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm border border-border">
               <h2 className="text-lg font-heading font-semibold">Live Preview</h2>
+              <div className="flex justify-center">
+                <div className="w-[280px] rounded-[2rem] border-[6px] border-foreground/10 shadow-xl overflow-hidden">
               <div
-                className="rounded-2xl p-6 flex flex-col items-center gap-4 min-h-[200px] transition-all"
+                className="p-6 flex flex-col items-center gap-3 min-h-[420px] transition-all"
                 style={{
                   background: profile?.theme === "gradient" ? "linear-gradient(135deg, #667eea, #764ba2)" : (profile?.bg_color || "#FFFFFF"),
                   color: ["dark", "gradient"].includes(profile?.theme || "") || (profile?.bg_color && parseInt(profile.bg_color.replace("#",""), 16) < 0x808080) ? "#ffffff" : "#1a1a1a",
