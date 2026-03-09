@@ -5,7 +5,7 @@ import {
   TreesIcon, LinkIcon, Palette, BarChart3, Settings, ExternalLink, Copy,
   Plus, GripVertical, Trash2, LogOut, Camera, Zap, Calendar, Star,
   QrCode, Type, Sparkles, Layout, Shield, Eye, EyeOff, Globe, Upload,
-  Lock, CheckCircle2, ChevronRight, Image as ImageIcon
+  Lock, CheckCircle2, ChevronRight, Image as ImageIcon, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,6 @@ import type { UserProfile, UserLink } from "@/types";
 
 type Tab = "links" | "appearance" | "pro" | "analytics" | "settings";
 
-// Free limits
 const FREE_LINK_LIMIT = 3;
 const FREE_THEMES = ["light", "dark"];
 
@@ -57,7 +56,6 @@ function ProBadge() {
   );
 }
 
-// Lock overlay shown on free-gated features
 function FreeLock({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-xl cursor-pointer group" onClick={onClick}
@@ -74,12 +72,10 @@ function QRCodeDisplay({ value }: { value: string }) {
     alt="QR" className="rounded-2xl border border-border shadow-sm" width={180} height={180} />;
 }
 
-// ─── Profile Preview ──────────────────────────────────────────────────────────
 function ProfilePreview({ profile, links }: { profile: UserProfile | null; links: UserLink[] }) {
   const rawProfile = profile as any;
   const isDark = ["dark", "gradient"].includes(profile?.theme || "") || (profile?.bg_color && parseInt(profile.bg_color.replace("#", ""), 16) < 0x808080);
   const textColor = isDark ? "#fff" : "#1a1a1a";
-  const subColor = isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)";
   const btnBg = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)";
   const btnRadius = profile?.button_style === "pill" ? "9999px" : profile?.button_style === "sharp" ? "4px" : "14px";
   const bgStyle: React.CSSProperties = rawProfile?.bg_image_url
@@ -91,10 +87,8 @@ function ProfilePreview({ profile, links }: { profile: UserProfile | null; links
   return (
     <div className="w-[260px] rounded-[2rem] border-[6px] border-foreground/10 shadow-2xl overflow-hidden mx-auto">
       <div className="min-h-[480px] p-5 flex flex-col items-center gap-3 relative" style={{ ...bgStyle, color: textColor }}>
-        {/* bg image overlay */}
         {rawProfile?.bg_image_url && <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />}
         <div className="relative z-10 flex flex-col items-center gap-3 w-full">
-          {/* Avatar */}
           <div className="w-16 h-16 rounded-full overflow-hidden border-2 mt-2" style={{ borderColor: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.1)" }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
@@ -113,14 +107,157 @@ function ProfilePreview({ profile, links }: { profile: UserProfile | null; links
               </div>
             ))}
           </div>
-          {/* Branding in preview */}
           {!(rawProfile?.hide_branding) && (
-            <div className="flex items-center gap-1 mt-2" style={{ color: subColor }}>
+            <div className="flex items-center gap-1 mt-2" style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)" }}>
               <TreesIcon className="h-3 w-3" /><span className="text-xs">Linkso</span>
             </div>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Link Row — local state, saves to DB on blur only (fixes revert bug) ──────
+function LinkRow({
+  link,
+  isPro,
+  onUpdate,
+  onDelete,
+}: {
+  link: UserLink;
+  isPro: boolean;
+  onUpdate: (id: string, updates: Partial<UserLink>) => void;
+  onDelete: (id: string) => void;
+}) {
+  // ✅ Local state — completely decoupled from parent while focused
+  const [title, setTitle] = useState(link.title);
+  const [url, setUrl]     = useState(link.url);
+  const [isFocused, setIsFocused] = useState<"title" | "url" | null>(null);
+
+  // Only sync from parent when this row is NOT focused (e.g. initial load)
+  useEffect(() => {
+    if (isFocused !== "title") setTitle(link.title);
+  }, [link.title]);
+
+  useEffect(() => {
+    if (isFocused !== "url") setUrl(link.url);
+  }, [link.url]);
+
+  // ✅ Save to DB only on blur — no debounce needed, no revert
+  const handleTitleBlur = () => {
+    setIsFocused(null);
+    if (title !== link.title) onUpdate(link.id, { title });
+  };
+
+  const handleUrlBlur = () => {
+    setIsFocused(null);
+    const platform = detectPlatform(url);
+    if (url !== link.url) onUpdate(link.id, { url, platform });
+  };
+
+  const detectedPlatform = detectPlatform(url);
+
+  return (
+    <div className={`group bg-card rounded-2xl border transition-all ${
+      (link as any).is_priority
+        ? "border-primary/40 shadow-md shadow-primary/5"
+        : "border-border hover:border-border/80 hover:shadow-sm"
+    }`}>
+      {/* ── Main row ── */}
+      <div className="flex items-center gap-3 p-3">
+        <GripVertical className="h-5 w-5 text-muted-foreground/30 cursor-grab shrink-0 hover:text-muted-foreground/60 transition-colors" />
+
+        {/* Platform icon badge */}
+        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/10">
+          <PlatformIcon platform={detectedPlatform} className="text-primary h-4 w-4" />
+        </div>
+
+        {/* Inputs */}
+        <div className="flex-1 min-w-0 space-y-1.5">
+          <input
+            value={title}
+            placeholder="Link title"
+            onChange={e => setTitle(e.target.value)}
+            onFocus={() => setIsFocused("title")}
+            onBlur={handleTitleBlur}
+            className="w-full h-8 px-3 text-sm font-medium rounded-lg bg-secondary/40 border border-transparent focus:border-primary/50 focus:bg-secondary/60 outline-none text-foreground placeholder:text-muted-foreground/50 transition-all"
+          />
+          <input
+            value={url}
+            placeholder="https://..."
+            onChange={e => setUrl(e.target.value)}
+            onFocus={() => setIsFocused("url")}
+            onBlur={handleUrlBlur}
+            className="w-full h-8 px-3 text-xs rounded-lg bg-secondary/40 border border-transparent focus:border-primary/50 focus:bg-secondary/60 outline-none font-mono text-muted-foreground placeholder:text-muted-foreground/40 transition-all"
+          />
+        </div>
+
+        {/* Right controls */}
+        <div className="flex items-center gap-2 shrink-0">
+          <Switch
+            checked={link.is_active}
+            onCheckedChange={c => onUpdate(link.id, { is_active: c })}
+          />
+          <button
+            onClick={() => onDelete(link.id)}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-all opacity-0 group-hover:opacity-100"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Status bar — shows URL preview + active state ── */}
+      {url && (
+        <div className="px-4 pb-3 -mt-1 flex items-center gap-2">
+          <div className="flex-1 flex items-center gap-1.5 min-w-0">
+            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${link.is_active ? "bg-green-400" : "bg-muted-foreground/30"}`} />
+            <span className="text-[11px] text-muted-foreground/60 truncate font-mono">{url}</span>
+          </div>
+          <a href={url} target="_blank" rel="noopener noreferrer"
+            className="text-[11px] text-muted-foreground/40 hover:text-primary flex items-center gap-0.5 shrink-0 transition-colors"
+            onClick={e => e.stopPropagation()}>
+            <ExternalLink className="h-2.5 w-2.5" />
+          </a>
+        </div>
+      )}
+
+      {/* ── Pro options ── */}
+      {isPro && (
+        <div className="px-4 pb-3 pt-1 border-t border-border/40 flex flex-wrap gap-4">
+          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+            <input type="checkbox" checked={(link as any).is_priority || false}
+              onChange={e => onUpdate(link.id, { is_priority: e.target.checked } as any)}
+              className="rounded accent-primary" />
+            <Star className="h-3 w-3 text-amber-500" /> Priority
+          </label>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+            <input type="checkbox" checked={(link as any).is_social_icon || false}
+              onChange={e => onUpdate(link.id, { is_social_icon: e.target.checked } as any)}
+              className="rounded accent-primary" />
+            <Layout className="h-3 w-3 text-primary" /> Social icon
+          </label>
+          <div className="flex gap-3 w-full">
+            <div className="flex-1">
+              <p className="text-[11px] text-muted-foreground mb-1 flex items-center gap-1">
+                <Calendar className="h-3 w-3" /> Show from
+              </p>
+              <Input type="datetime-local" defaultValue={(link as any).scheduled_start || ""}
+                onChange={e => onUpdate(link.id, { scheduled_start: e.target.value } as any)}
+                className="h-7 text-xs bg-secondary/40 border-transparent" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[11px] text-muted-foreground mb-1 flex items-center gap-1">
+                <Calendar className="h-3 w-3" /> Hide after
+              </p>
+              <Input type="datetime-local" defaultValue={(link as any).scheduled_end || ""}
+                onChange={e => onUpdate(link.id, { scheduled_end: e.target.value } as any)}
+                className="h-7 text-xs bg-secondary/40 border-transparent" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -137,6 +274,7 @@ export default function Dashboard() {
   const [showPassword, setShowPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [bgUploading, setBgUploading] = useState(false);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
   const navigate = useNavigate();
 
   const isPro = !!(profile?.is_pro && profile?.pro_expires_at && new Date(profile.pro_expires_at) > new Date());
@@ -180,17 +318,9 @@ export default function Dashboard() {
   };
 
   const updateLink = useCallback(async (id: string, updates: Partial<UserLink>) => {
-    if (updates.url !== undefined) updates = { ...updates, platform: detectPlatform(updates.url) };
     await supabase.from("links").update(updates).eq("id", id);
     setLinks(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
   }, []);
-
-  const debRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const debLink = useCallback((id: string, updates: Partial<UserLink>) => {
-    setLinks(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
-    if (debRef.current[id]) clearTimeout(debRef.current[id]);
-    debRef.current[id] = setTimeout(() => { updateLink(id, updates); delete debRef.current[id]; }, 400);
-  }, [updateLink]);
 
   const deleteLink = async (id: string) => {
     await supabase.from("links").delete().eq("id", id);
@@ -284,14 +414,11 @@ export default function Dashboard() {
 
       {/* ══════════════════════ SIDEBAR ══════════════════════ */}
       <aside className="hidden md:flex w-64 border-r border-border bg-secondary/10 flex-col p-4 gap-4">
-
-        {/* Logo */}
         <div className="flex items-center gap-2 px-2 py-1">
           <TreesIcon className="h-6 w-6 text-primary" />
           <span className="font-heading font-bold text-lg">Linkso</span>
         </div>
 
-        {/* Profile card */}
         {profile && (
           <div className="p-3 rounded-xl bg-card border border-border flex items-center gap-3">
             <Avatar url={profile.avatar_url} name={profile.display_name} size="sm" />
@@ -303,7 +430,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Nav */}
         <nav className="flex-1 space-y-1">
           {navItems.map(({ tab, icon: Icon, label, proOnly }) => {
             const active = activeTab === tab;
@@ -322,7 +448,6 @@ export default function Dashboard() {
           })}
         </nav>
 
-        {/* Upgrade CTA */}
         {!isPro && (
           <button onClick={() => navigate("/upgrade")}
             className="w-full p-4 rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-primary/10 text-left hover:from-amber-500/15 hover:to-primary/15 transition-all group">
@@ -335,7 +460,6 @@ export default function Dashboard() {
           </button>
         )}
 
-        {/* Quick actions */}
         <div className="space-y-2 border-t border-border pt-3">
           <Button variant="hero-outline" size="sm" className="w-full" asChild>
             <Link to={`/${profile?.username}`} target="_blank"><ExternalLink className="h-3.5 w-3.5 mr-2" />View Profile</Link>
@@ -346,25 +470,62 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      {/* ══════════════════════ MOBILE NAV ══════════════════════ */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-card/95 backdrop-blur border-t border-border flex justify-around py-2 px-2">
-        {navItems.map(({ tab, icon: Icon }) => (
+      {/* ══════════════════════ MOBILE HEADER ══════════════════════ */}
+      <div className="md:hidden fixed top-0 inset-x-0 z-40 bg-card/95 backdrop-blur border-b border-border flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2">
+          <TreesIcon className="h-5 w-5 text-primary" />
+          <span className="font-heading font-bold">Linkso</span>
+        </div>
+        {/* ✅ Preview button for mobile */}
+        <button
+          onClick={() => setShowMobilePreview(true)}
+          className="flex items-center gap-1.5 text-xs font-medium text-primary border border-primary/30 bg-primary/5 rounded-full px-3 py-1.5"
+        >
+          <Eye className="h-3.5 w-3.5" />Preview
+        </button>
+      </div>
+
+      {/* ══════════════════════ MOBILE PREVIEW MODAL ══════════════════════ */}
+      {showMobilePreview && (
+        <div className="md:hidden fixed inset-0 z-50 bg-background/95 backdrop-blur flex flex-col items-center justify-center p-6">
+          <button
+            onClick={() => setShowMobilePreview(false)}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-secondary flex items-center justify-center"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <p className="text-sm font-semibold text-muted-foreground mb-5">Live Preview</p>
+          <ProfilePreview profile={profile} links={sortedLinks} />
+          <div className="mt-5 flex gap-3">
+            <Button variant="hero-outline" size="sm" asChild>
+              <Link to={`/${profile?.username}`} target="_blank"><ExternalLink className="h-4 w-4 mr-2" />Open Profile</Link>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(profileUrl); toast.success("Copied!"); }}>
+              <Copy className="h-4 w-4 mr-2" />Copy Link
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════ MOBILE BOTTOM NAV ══════════════════════ */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card/95 backdrop-blur border-t border-border flex justify-around py-2 px-2">
+        {navItems.map(({ tab, icon: Icon, label }) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`flex flex-col items-center gap-1 px-2 py-1 text-xs rounded-lg ${activeTab === tab ? "text-primary" : "text-muted-foreground"}`}>
+            className={`flex flex-col items-center gap-0.5 px-2 py-1 text-xs rounded-lg ${activeTab === tab ? "text-primary" : "text-muted-foreground"}`}>
             <Icon className="h-5 w-5" />
+            <span className="text-[10px]">{label}</span>
           </button>
         ))}
       </div>
 
       {/* ══════════════════════ MAIN CONTENT ══════════════════════ */}
-      <main className="flex-1 overflow-y-auto pb-24 md:pb-8">
-        <div className="max-w-6xl mx-auto p-6 md:p-8">
+      <main className="flex-1 overflow-y-auto pb-24 md:pb-8 pt-14 md:pt-0">
+        <div className="max-w-6xl mx-auto p-4 md:p-8">
 
           {/* ─── LINKS TAB ─────────────────────────────────────── */}
           {activeTab === "links" && (
             <div className="grid md:grid-cols-[1fr_280px] gap-8">
               <div className="space-y-5">
-                {/* Header */}
                 <div className="flex items-center justify-between">
                   <div>
                     <h1 className="text-2xl font-heading font-bold">Links</h1>
@@ -378,7 +539,6 @@ export default function Dashboard() {
                   </Button>
                 </div>
 
-                {/* URL card */}
                 <div className="rounded-2xl border-2 border-primary/25 bg-primary/5 p-4 flex items-center gap-3">
                   <div className="flex-1 font-mono text-sm truncate text-muted-foreground">{profileUrl}</div>
                   <Button size="sm" variant="hero" onClick={() => { navigator.clipboard.writeText(profileUrl); toast.success("Copied!"); }}>
@@ -386,49 +546,15 @@ export default function Dashboard() {
                   </Button>
                 </div>
 
-                {/* Link list */}
                 <div className="space-y-3">
                   {sortedLinks.map(link => (
-                    <div key={link.id} className={`bg-card rounded-2xl border p-4 space-y-3 transition-all ${(link as any).is_priority ? "border-primary/40 shadow-sm shadow-primary/10" : "border-border"}`}>
-                      <div className="flex items-center gap-3">
-                        <GripVertical className="h-5 w-5 text-muted-foreground/50 cursor-grab shrink-0" />
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <PlatformIcon platform={link.platform} className="text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0 space-y-1.5">
-                          <Input value={link.title} onChange={e => debLink(link.id, { title: e.target.value })} placeholder="Link title" className="h-8 text-sm bg-secondary/40 border-transparent focus:border-primary" />
-                          <Input value={link.url} onChange={e => debLink(link.id, { url: e.target.value })} placeholder="https://..." className="h-8 text-sm bg-secondary/40 border-transparent focus:border-primary font-mono" />
-                        </div>
-                        <Switch checked={link.is_active} onCheckedChange={c => updateLink(link.id, { is_active: c })} />
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive shrink-0 h-8 w-8" onClick={() => deleteLink(link.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      {/* Pro link options */}
-                      {isPro && (
-                        <div className="ml-11 pt-2 border-t border-border/50 flex flex-wrap gap-5">
-                          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                            <input type="checkbox" checked={(link as any).is_priority || false} onChange={e => updateLink(link.id, { is_priority: e.target.checked } as any)} className="rounded accent-primary" />
-                            <Star className="h-3 w-3 text-amber-500" /> Priority
-                          </label>
-                          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                            <input type="checkbox" checked={(link as any).is_social_icon || false} onChange={e => updateLink(link.id, { is_social_icon: e.target.checked } as any)} className="rounded accent-primary" />
-                            <Layout className="h-3 w-3 text-primary" /> Social icon row
-                          </label>
-                          <div className="flex gap-3 w-full">
-                            <div className="flex-1">
-                              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1"><Calendar className="h-3 w-3" /> Show from</p>
-                              <Input type="datetime-local" value={(link as any).scheduled_start || ""} onChange={e => debLink(link.id, { scheduled_start: e.target.value } as any)} className="h-7 text-xs bg-secondary/40 border-transparent" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1"><Calendar className="h-3 w-3" /> Hide after</p>
-                              <Input type="datetime-local" value={(link as any).scheduled_end || ""} onChange={e => debLink(link.id, { scheduled_end: e.target.value } as any)} className="h-7 text-xs bg-secondary/40 border-transparent" />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <LinkRow
+                      key={link.id}
+                      link={link}
+                      isPro={isPro}
+                      onUpdate={updateLink}
+                      onDelete={deleteLink}
+                    />
                   ))}
 
                   {links.length === 0 && (
@@ -449,7 +575,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Sticky preview */}
               <div className="hidden md:block">
                 <div className="sticky top-8 space-y-4">
                   <p className="text-sm font-semibold text-muted-foreground text-center">Live Preview</p>
@@ -468,7 +593,6 @@ export default function Dashboard() {
               <div className="space-y-6">
                 <h1 className="text-2xl font-heading font-bold">Appearance</h1>
 
-                {/* Profile Photo */}
                 <section className="bg-card rounded-2xl border border-border p-6 space-y-4">
                   <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Profile Photo</h2>
                   <div className="flex items-center gap-5">
@@ -487,7 +611,6 @@ export default function Dashboard() {
                   </div>
                 </section>
 
-                {/* Profile Info */}
                 <section className="bg-card rounded-2xl border border-border p-6 space-y-4">
                   <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Profile Info</h2>
                   <div className="space-y-3">
@@ -502,11 +625,8 @@ export default function Dashboard() {
                   </div>
                 </section>
 
-                {/* Theme & Colors */}
                 <section className="bg-card rounded-2xl border border-border p-6 space-y-5">
                   <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Theme & Colors</h2>
-
-                  {/* Themes — free gets 2, gradient is pro */}
                   <div>
                     <label className="text-sm font-medium mb-3 block">Theme</label>
                     <div className="grid grid-cols-3 gap-3">
@@ -535,7 +655,6 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  {/* Background color */}
                   <div>
                     <label className="text-sm font-medium mb-3 block">Background Color</label>
                     <div className="flex flex-wrap gap-3">
@@ -551,7 +670,6 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  {/* Button style */}
                   <div>
                     <label className="text-sm font-medium mb-3 block">Button Style</label>
                     <div className="grid grid-cols-3 gap-3">
@@ -565,7 +683,6 @@ export default function Dashboard() {
                   </div>
                 </section>
 
-                {/* Background image — Pro only */}
                 <section className="bg-card rounded-2xl border border-border p-6 space-y-4 relative overflow-hidden">
                   <div className="flex items-center justify-between">
                     <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -579,9 +696,7 @@ export default function Dashboard() {
                     <div className="relative rounded-xl overflow-hidden h-28 border border-border">
                       <img src={(profile as any).bg_image_url} alt="bg" className="w-full h-full object-cover" />
                       <button onClick={async () => { await supabase.from("profiles").update({ bg_image_url: null } as any).eq("id", user.id); setProfile(p => p ? { ...p, bg_image_url: null } as any : p); toast.success("Removed"); }}
-                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80">
-                        ×
-                      </button>
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80">×</button>
                     </div>
                   )}
                   <label className={`flex items-center gap-3 p-4 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary transition-colors ${bgUploading ? "opacity-50 pointer-events-none" : ""}`}>
@@ -594,19 +709,17 @@ export default function Dashboard() {
                   </label>
                 </section>
 
-                {/* Free branding notice */}
                 {!isPro && (
                   <div className="rounded-2xl border border-border bg-secondary/30 p-5 flex items-start gap-4">
                     <TreesIcon className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-semibold">Powered by Linkso branding</p>
-                      <p className="text-xs text-muted-foreground mt-1">Your profile shows "Made with Linkso" and a link back to us. <button onClick={() => navigate("/upgrade")} className="text-primary hover:underline">Upgrade to remove it.</button></p>
+                      <p className="text-xs text-muted-foreground mt-1">Your profile shows "Made with Linkso". <button onClick={() => navigate("/upgrade")} className="text-primary hover:underline">Upgrade to remove it.</button></p>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Sticky preview */}
               <div className="hidden md:block">
                 <div className="sticky top-8 space-y-4">
                   <p className="text-sm font-semibold text-muted-foreground text-center">Live Preview</p>
@@ -620,8 +733,6 @@ export default function Dashboard() {
           {activeTab === "pro" && (
             <div className="grid md:grid-cols-[1fr_280px] gap-8">
               <div className="space-y-6">
-
-                {/* Hero */}
                 <div className="rounded-2xl p-6 border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-primary/5 to-purple-500/10 space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
@@ -631,17 +742,12 @@ export default function Dashboard() {
                       <h1 className="text-xl font-heading font-bold flex items-center gap-2">Pro Features <ProBadge /></h1>
                       {isPro
                         ? <p className="text-sm text-muted-foreground">Active until {new Date(profile!.pro_expires_at!).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
-                        : <p className="text-sm text-muted-foreground">Unlock all features below for <button onClick={() => navigate("/upgrade")} className="text-primary font-semibold hover:underline">₹99/mo</button></p>}
+                        : <p className="text-sm text-muted-foreground">Unlock all features for <button onClick={() => navigate("/upgrade")} className="text-primary font-semibold hover:underline">₹99/mo</button></p>}
                     </div>
                   </div>
-                  {!isPro && (
-                    <Button variant="hero" onClick={() => navigate("/upgrade")} className="w-full md:w-auto">
-                      <Zap className="h-4 w-4 mr-2" />Upgrade to Pro · ₹99/month
-                    </Button>
-                  )}
+                  {!isPro && <Button variant="hero" onClick={() => navigate("/upgrade")} className="w-full md:w-auto"><Zap className="h-4 w-4 mr-2" />Upgrade to Pro · ₹99/month</Button>}
                 </div>
 
-                {/* 1. Verified Badge */}
                 <section className="bg-card rounded-2xl border border-border p-6 relative overflow-hidden">
                   {!isPro && <FreeLock label="Verified Badge" onClick={() => navigate("/upgrade")} />}
                   <div className="flex items-center justify-between">
@@ -653,7 +759,6 @@ export default function Dashboard() {
                   </div>
                 </section>
 
-                {/* 2. Remove Branding */}
                 <section className="bg-card rounded-2xl border border-border p-6 relative overflow-hidden">
                   {!isPro && <FreeLock label="Remove Branding" onClick={() => navigate("/upgrade")} />}
                   <div className="flex items-center justify-between">
@@ -665,7 +770,6 @@ export default function Dashboard() {
                   </div>
                 </section>
 
-                {/* 3. Custom Font */}
                 <section className="bg-card rounded-2xl border border-border p-6 space-y-4 relative overflow-hidden">
                   {!isPro && <FreeLock label="Custom Fonts" onClick={() => navigate("/upgrade")} />}
                   <h2 className="font-semibold flex items-center gap-2"><Type className="h-4 w-4 text-primary" />Custom Font</h2>
@@ -681,7 +785,6 @@ export default function Dashboard() {
                   </div>
                 </section>
 
-                {/* 4. Animated Background */}
                 <section className="bg-card rounded-2xl border border-border p-6 space-y-4 relative overflow-hidden">
                   {!isPro && <FreeLock label="Animated Backgrounds" onClick={() => navigate("/upgrade")} />}
                   <h2 className="font-semibold flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" />Animated Background</h2>
@@ -696,7 +799,6 @@ export default function Dashboard() {
                   </div>
                 </section>
 
-                {/* 5. Password Protection */}
                 <section className="bg-card rounded-2xl border border-border p-6 space-y-4 relative overflow-hidden">
                   {!isPro && <FreeLock label="Password Protection" onClick={() => navigate("/upgrade")} />}
                   <div className="flex items-center justify-between">
@@ -724,7 +826,6 @@ export default function Dashboard() {
                   </div>
                 </section>
 
-                {/* 6. QR Code */}
                 <section className="bg-card rounded-2xl border border-border p-6 space-y-4 relative overflow-hidden">
                   {!isPro && <FreeLock label="QR Code" onClick={() => navigate("/upgrade")} />}
                   <h2 className="font-semibold flex items-center gap-2"><QrCode className="h-4 w-4 text-primary" />Profile QR Code</h2>
@@ -737,11 +838,10 @@ export default function Dashboard() {
                   </div>
                 </section>
 
-                {/* 7. Custom Domain */}
                 <section className="bg-card rounded-2xl border border-border p-6 space-y-4 relative overflow-hidden">
                   {!isPro && <FreeLock label="Custom Domain" onClick={() => navigate("/upgrade")} />}
                   <h2 className="font-semibold flex items-center gap-2"><Globe className="h-4 w-4 text-primary" />Custom Domain</h2>
-                  <p className="text-sm text-muted-foreground">Point your own domain (e.g. <code className="text-xs bg-secondary px-1.5 py-0.5 rounded">links.yourname.com</code>) to your Linkso profile.</p>
+                  <p className="text-sm text-muted-foreground">Point your own domain to your Linkso profile.</p>
                   <div className="flex gap-2">
                     <Input value={(profile as any)?.custom_domain || ""} onChange={e => setProfile(p => p ? { ...p, custom_domain: e.target.value } as any : p)} placeholder="links.yourname.com" className="flex-1 bg-secondary/40 border-transparent focus:border-primary" disabled={!isPro} />
                     <Button variant="hero" size="sm" disabled={!isPro} onClick={async () => {
@@ -764,10 +864,8 @@ export default function Dashboard() {
                     </div>
                   )}
                 </section>
-
               </div>
 
-              {/* Sticky preview */}
               <div className="hidden md:block">
                 <div className="sticky top-8 space-y-4">
                   <p className="text-sm font-semibold text-muted-foreground text-center">Live Preview</p>
@@ -792,7 +890,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Advanced — Pro gated */}
               <div className="bg-card rounded-2xl border border-border p-6 space-y-5 relative overflow-hidden">
                 {!isPro && <FreeLock label="Advanced Analytics" onClick={() => navigate("/upgrade")} />}
                 <h2 className="font-semibold flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" />Advanced Analytics <ProBadge /></h2>
@@ -831,7 +928,6 @@ export default function Dashboard() {
             <div className="max-w-xl space-y-6">
               <h1 className="text-2xl font-heading font-bold">Settings</h1>
 
-              {/* Plan */}
               <section className={`rounded-2xl p-6 border ${isPro ? "border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-primary/5" : "border-border bg-card"}`}>
                 <div className="flex items-start justify-between">
                   <div>
@@ -844,7 +940,6 @@ export default function Dashboard() {
                 </div>
               </section>
 
-              {/* Account */}
               <section className="bg-card rounded-2xl border border-border p-6 space-y-4">
                 <h2 className="font-semibold">Account</h2>
                 <div>
@@ -853,7 +948,6 @@ export default function Dashboard() {
                 </div>
               </section>
 
-              {/* Username */}
               <section className="bg-card rounded-2xl border border-border p-6 space-y-4">
                 <h2 className="font-semibold">Change Username</h2>
                 <p className="text-sm text-muted-foreground">Current: <span className="font-mono font-medium text-foreground">@{profile?.username}</span></p>
@@ -871,7 +965,6 @@ export default function Dashboard() {
                 }}>Update Username</Button>
               </section>
 
-              {/* Danger */}
               <section className="bg-card rounded-2xl border border-destructive/25 p-6 space-y-3">
                 <h2 className="font-semibold text-destructive">Danger Zone</h2>
                 <Button variant="destructive" size="sm" onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}>

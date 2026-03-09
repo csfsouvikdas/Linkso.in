@@ -10,7 +10,7 @@ const RAZORPAY_KEY_ID = "rzp_test_ROEDQAv84pbQ27";
 declare global { interface Window { Razorpay: any; } }
 
 const FREE_FEATURES = [
-  "Up to 5 links",
+  "Up to 3 links",
   "Basic themes (Light, Dark, Gradient)",
   "Button style customization",
   "Profile picture & bio",

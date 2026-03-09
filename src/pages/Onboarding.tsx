@@ -35,18 +35,18 @@ export default function Onboarding() {
   const handleFinish = async () => {
     setSaving(true);
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
+
     if (sessionError) {
       toast.error("Authentication error: " + sessionError.message);
       setSaving(false);
       return;
     }
-    
-    if (!session) { 
-      navigate("/login"); 
-      return; 
+
+    if (!session) {
+      navigate("/login");
+      return;
     }
-    
+
     const userId = session.user.id;
 
     const { error } = await supabase.from("profiles").upsert({
@@ -56,12 +56,12 @@ export default function Onboarding() {
       bio,
       avatar_url: avatarUrl || null,
       is_onboarded: true,
-    }, { onConflict: 'id' });
+    }, { onConflict: "id" });
 
     setSaving(false);
-    if (error) { 
-      toast.error("Failed to save profile: " + error.message); 
-      return; 
+    if (error) {
+      toast.error("Failed to save profile: " + error.message);
+      return;
     }
     navigate("/dashboard");
   };
@@ -103,6 +103,7 @@ export default function Onboarding() {
       )}
 
       <div className="w-full max-w-md">
+
         {/* WELCOME */}
         {step === "welcome" && (
           <div className="text-center space-y-6 animate-fade-in">
@@ -133,12 +134,14 @@ export default function Onboarding() {
                 <p className="text-sm text-muted-foreground">This will be your unique Linkso URL</p>
               </div>
             </div>
-            <div className="space-y-2">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                  {window.location.origin}/
+
+            <div className="space-y-3">
+              {/* ✅ Fixed: prefix label + input side by side, no overlap */}
+              <div className="flex items-center bg-secondary/50 border border-border rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-0">
+                <span className="pl-3 pr-1 text-sm text-muted-foreground whitespace-nowrap select-none">
+                  linkso.in/
                 </span>
-                <Input
+                <input
                   value={username}
                   onChange={e => {
                     const val = e.target.value.replace(/[^a-zA-Z0-9_]/g, "").toLowerCase();
@@ -146,8 +149,8 @@ export default function Onboarding() {
                     setUsernameError("");
                   }}
                   placeholder="yourname"
-                  className={`pl-[${window.location.origin.length * 7 + 12}px] bg-secondary/50 border-border pl-36`}
                   maxLength={30}
+                  className="flex-1 bg-transparent py-2 pr-3 text-sm outline-none placeholder:text-muted-foreground text-foreground"
                 />
               </div>
               {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
@@ -157,6 +160,7 @@ export default function Onboarding() {
                 </p>
               )}
             </div>
+
             <Button
               variant="hero"
               className="w-full"
@@ -301,13 +305,14 @@ export default function Onboarding() {
             <div>
               <h2 className="text-2xl font-heading font-bold">You're all set, {displayName}! 🎉</h2>
               <p className="text-muted-foreground mt-1">Your Linkso is ready at</p>
-              <p className="font-mono text-primary font-semibold mt-1">{window.location.origin}/{username}</p>
+              <p className="font-mono text-primary font-semibold mt-1">linkso.in/{username}</p>
             </div>
             <Button variant="hero" className="w-full" size="lg" onClick={handleFinish} disabled={saving}>
               {saving ? "Setting up..." : "Go to Dashboard →"}
             </Button>
           </div>
         )}
+
       </div>
     </div>
   );
