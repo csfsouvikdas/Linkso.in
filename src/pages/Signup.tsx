@@ -269,11 +269,11 @@ export default function SignupPage() {
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-6">
               <div className="space-y-2 text-center">
-                <Label htmlFor="otp">6-Digit Code</Label>
+                <Label htmlFor="otp">8-Digit Code</Label>
                 <div className="relative">
                   <Input
                     id="otp"
-                    placeholder="000000"
+                    placeholder="00000000"
                     value={otp}
                     onChange={e => setOtp(e.target.value.replace(/\D/g, ""))}
                     required
