@@ -24,8 +24,10 @@ export default function SignupPage() {
   const [step, setStep] = useState<"form" | "otp">("form");
   const [otp, setOtp] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
   const navigate = useNavigate();
 
+  // Username availability check with debounce
   useEffect(() => {
     if (username.length < 3) {
       setUsernameAvailable(null);
@@ -33,7 +35,11 @@ export default function SignupPage() {
     }
     const timer = setTimeout(async () => {
       setCheckingUsername(true);
-      const { data } = await supabase.from("profiles").select("id").eq("username", username.toLowerCase()).maybeSingle();
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", username.toLowerCase())
+        .maybeSingle();
       setUsernameAvailable(!data);
       setCheckingUsername(false);
     }, 500);
@@ -42,20 +48,30 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!usernameAvailable) {
       toast.error("Please choose an available username");
       return;
     }
+
     setLoading(true);
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { display_name: name, username: username.toLowerCase() },
-        emailRedirectTo: window.location.origin,
+        // ✅ No emailRedirectTo — this tells Supabase to send a 6-digit OTP
+        // instead of a magic link URL. Also make sure your Supabase email
+        // template uses {{ .Token }} not {{ .ConfirmationURL }}
+        data: {
+          display_name: name,
+          username: username.toLowerCase(),
+        },
       },
     });
+
     setLoading(false);
+
     if (error) {
       toast.error(error.message);
     } else {
@@ -71,39 +87,70 @@ export default function SignupPage() {
     }
 
     setVerifying(true);
+
     const { error, data } = await supabase.auth.verifyOtp({
       email,
       token: otp,
       type: "signup",
     });
-    setVerifying(false);
+
     if (error) {
       toast.error(error.message);
+      setOtp(""); // Clear so user can re-enter
+      setVerifying(false);
       return;
     }
-    
-    // Verify the session was created successfully
+
     if (data?.session) {
-      toast.success("Email verified! Welcome to Linkso 🎉");
+      // Upsert profile row now that the user is confirmed
+      const userId = data.session.user.id;
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert({
+          id: userId,
+          username: username.toLowerCase(),
+          display_name: name,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (profileError) {
+        // Non-fatal — user is still logged in
+        console.error("Profile upsert error:", profileError.message);
+        toast.error("Account created but profile setup failed. You can update it in settings.");
+      } else {
+        toast.success("Email verified! Welcome to Linkso 🎉");
+      }
+
       navigate("/dashboard");
     } else {
       toast.error("Verification failed. Please try again.");
     }
+
+    setVerifying(false);
   };
 
   const handleResend = async () => {
+    setResending(true);
     const { error } = await supabase.auth.resend({
       type: "signup",
       email,
     });
-    if (error) toast.error(error.message);
-    else toast.success("New code sent! Check your email.");
+    setResending(false);
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("New code sent! Check your email.");
+      setOtp("");
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="absolute top-1/4 right-1/3 w-96 h-96 bg-primary/5 rounded-full blur-[120px]" />
       <div className="w-full max-w-md space-y-8 relative">
+
+        {/* Header */}
         <div className="text-center space-y-2">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <TreesIcon className="h-8 w-8 text-primary" />
@@ -118,14 +165,17 @@ export default function SignupPage() {
             <>
               <h1 className="text-3xl font-heading font-bold">Verify your email</h1>
               <p className="text-muted-foreground">
-                We sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>
+                We sent a 6-digit code to{" "}
+                <span className="font-medium text-foreground">{email}</span>
               </p>
             </>
           )}
         </div>
 
+        {/* ── STEP 1: Signup Form ─────────────────────────────────────────── */}
         {step === "form" ? (
           <div className="bg-card rounded-2xl p-8 space-y-5 shadow-sm border border-border">
+
             {/* Google Sign-Up */}
             <Button
               variant="outline"
@@ -138,7 +188,9 @@ export default function SignupPage() {
                     options: { redirectTo: `${window.location.origin}/dashboard` },
                   });
                   if (error) {
-                    const lovableResult = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+                    const lovableResult = await lovable.auth.signInWithOAuth("google", {
+                      redirect_uri: window.location.origin,
+                    });
                     if (lovableResult.error) toast.error(lovableResult.error.message);
                     else if (lovableResult.redirected) return;
                   } else if (data?.url) {
@@ -168,17 +220,42 @@ export default function SignupPage() {
             </div>
 
             <form onSubmit={handleSignup} className="space-y-4">
+              {/* Display Name */}
               <div className="space-y-2">
                 <Label htmlFor="name">Display Name</Label>
-                <Input id="name" placeholder="Jane Doe" value={name} onChange={e => setName(e.target.value)} required className="bg-secondary/50 border-border" />
+                <Input
+                  id="name"
+                  placeholder="Jane Doe"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  required
+                  className="bg-secondary/50 border-border"
+                />
               </div>
+
+              {/* Username */}
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
                 <div className="relative">
-                  <Input id="username" placeholder="janedoe" value={username} onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))} required className="bg-secondary/50 border-border pr-10" />
+                  <Input
+                    id="username"
+                    placeholder="janedoe"
+                    value={username}
+                    onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
+                    required
+                    className="bg-secondary/50 border-border pr-10"
+                  />
                   {username.length >= 3 && !checkingUsername && usernameAvailable !== null && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      {usernameAvailable ? <Check className="h-4 w-4 text-primary" /> : <X className="h-4 w-4 text-destructive" />}
+                      {usernameAvailable
+                        ? <Check className="h-4 w-4 text-primary" />
+                        : <X className="h-4 w-4 text-destructive" />
+                      }
+                    </div>
+                  )}
+                  {username.length >= 3 && checkingUsername && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="h-4 w-4 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin" />
                     </div>
                   )}
                 </div>
@@ -189,22 +266,54 @@ export default function SignupPage() {
                   <p className="text-xs text-primary">Username is available!</p>
                 )}
               </div>
+
+              {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required className="bg-secondary/50 border-border" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  className="bg-secondary/50 border-border"
+                />
               </div>
+
+              {/* Password */}
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} className="bg-secondary/50 border-border" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="bg-secondary/50 border-border"
+                />
               </div>
-              <Button variant="hero" className="w-full" type="submit" disabled={loading}>
+
+              <Button
+                variant="hero"
+                className="w-full"
+                type="submit"
+                disabled={loading || !usernameAvailable}
+              >
                 {loading ? "Creating account..." : "Create your Linkso"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
           </div>
+
         ) : (
+
+          /* ── STEP 2: OTP Verification ───────────────────────────────────── */
           <div className="bg-card rounded-2xl p-8 space-y-6 shadow-sm border border-border">
+
+            {/* OTP Input */}
             <div className="flex justify-center">
               <InputOTP maxLength={6} value={otp} onChange={setOtp}>
                 <InputOTPGroup>
@@ -217,22 +326,45 @@ export default function SignupPage() {
                 </InputOTPGroup>
               </InputOTP>
             </div>
-            <Button variant="hero" className="w-full" onClick={handleVerifyOtp} disabled={verifying || otp.length !== 6}>
+
+            {/* Verify Button */}
+            <Button
+              variant="hero"
+              className="w-full"
+              onClick={handleVerifyOtp}
+              disabled={verifying || otp.length !== 6}
+            >
               {verifying ? "Verifying..." : "Verify & Continue"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
+
+            {/* Resend */}
             <p className="text-center text-sm text-muted-foreground">
               Didn't receive a code?{" "}
-              <button onClick={handleResend} className="text-primary hover:underline font-medium">
-                Resend
+              <button
+                onClick={handleResend}
+                disabled={resending}
+                className="text-primary hover:underline font-medium disabled:opacity-50"
+              >
+                {resending ? "Sending..." : "Resend"}
               </button>
             </p>
+
+            {/* Back */}
+            <button
+              onClick={() => { setStep("form"); setOtp(""); }}
+              className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              ← Back to sign up
+            </button>
           </div>
         )}
 
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link to="/login" className="text-primary hover:underline font-medium">Log in</Link>
+          <Link to="/login" className="text-primary hover:underline font-medium">
+            Log in
+          </Link>
         </p>
       </div>
     </div>
