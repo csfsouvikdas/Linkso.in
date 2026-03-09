@@ -27,8 +27,8 @@ export function AdBanner({ isPro, className = "" }: AdBannerProps) {
       <ins
         className="adsbygoogle block"
         style={{ display: "block" }}
-        data-ad-client="pub-4615523524206065"  // ← your AdSense publisher ID
-        data-ad-slot="2222222222"                  // ← your ad slot ID
+        data-ad-client="ca-pub-4615523524206065"  // ← your AdSense publisher ID
+        data-ad-slot="5857699705"                  // ← your ad slot ID
         data-ad-format="auto"
         data-full-width-responsive="true"
       />

@@ -1,3 +1,7 @@
 {
   "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> df7ecd9 (Add .gitignore and fix project imports)
