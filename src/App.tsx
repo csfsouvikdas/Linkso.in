@@ -16,7 +16,7 @@ import ContactPage from "./pages/Contact";
 import PrivacyPage from "./pages/Privacy";
 import TermsPage from "./pages/Terms";
 import NotFound from "./pages/NotFound";
-import ResetPasswordPage from "./pages/ResetPassword";
+import ResetPasswordPage from "./pages/resetpassword";
 
 const queryClient = new QueryClient();
 
