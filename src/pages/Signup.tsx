@@ -28,7 +28,6 @@ export default function SignupPage() {
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [showPasswordHints, setShowPasswordHints] = useState(false);
   
-  // Timer for Resend OTP
   const [timer, setTimer] = useState(0);
   
   const navigate = useNavigate();
@@ -36,7 +35,6 @@ export default function SignupPage() {
   const passedChecks = passwordChecks.filter(c => c.test(password));
   const allChecksPassed = passedChecks.length === passwordChecks.length;
 
-  // Handle countdown timer logic
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (timer > 0) {
@@ -87,7 +85,7 @@ export default function SignupPage() {
 
     setLoading(false);
     setStep("verify");
-    setTimer(60); // Start 1 min timer
+    setTimer(60);
     toast.success("Verification code sent!");
   };
 
@@ -155,7 +153,7 @@ export default function SignupPage() {
           <p className="text-muted-foreground text-sm">
             {step === "signup" 
               ? "Free forever. No credit card needed." 
-              : `Enter the code sent to ${email}`}
+              : `Enter the 8-digit code sent to ${email}`}
           </p>
         </div>
 
@@ -232,13 +230,11 @@ export default function SignupPage() {
                   />
                   {showPasswordHints && (
                     <div className="space-y-2 pt-1">
-                      {/* Strength Bar */}
                       <div className="flex gap-1">
                         {passwordChecks.map((_, i) => (
                           <div key={i} className={`h-1 flex-1 rounded-full ${i < passedChecks.length ? "bg-primary" : "bg-secondary"}`} />
                         ))}
                       </div>
-                      {/* Requirement Labels */}
                       <div className="grid grid-cols-1 gap-1">
                         {passwordChecks.map((check) => {
                           const isMet = check.test(password);
@@ -278,14 +274,14 @@ export default function SignupPage() {
                     onChange={e => setOtp(e.target.value.replace(/\D/g, ""))}
                     required
                     className="bg-secondary/50 text-center text-2xl tracking-[0.5em] font-mono h-14"
-                    maxLength={6}
+                    maxLength={8}
                   />
                   <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-30" />
                 </div>
               </div>
 
               <div className="space-y-3">
-                <Button variant="hero" className="w-full h-12" type="submit" disabled={loading || otp.length < 6}>
+                <Button variant="hero" className="w-full h-12" type="submit" disabled={loading || otp.length < 8}>
                   {loading ? "Verifying..." : "Confirm Code"}
                 </Button>
                 
