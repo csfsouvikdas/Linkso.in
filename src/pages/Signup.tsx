@@ -222,12 +222,40 @@ export default function SignupPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" value={password} onChange={e => {setPassword(e.target.value); setShowPasswordHints(true);}} required className="bg-secondary/50" />
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    value={password} 
+                    onChange={e => {setPassword(e.target.value); setShowPasswordHints(true);}} 
+                    required 
+                    className="bg-secondary/50" 
+                  />
                   {showPasswordHints && (
-                    <div className="flex gap-1 pt-1">
-                      {passwordChecks.map((_, i) => (
-                        <div key={i} className={`h-1 flex-1 rounded-full ${i < passedChecks.length ? "bg-primary" : "bg-secondary"}`} />
-                      ))}
+                    <div className="space-y-2 pt-1">
+                      {/* Strength Bar */}
+                      <div className="flex gap-1">
+                        {passwordChecks.map((_, i) => (
+                          <div key={i} className={`h-1 flex-1 rounded-full ${i < passedChecks.length ? "bg-primary" : "bg-secondary"}`} />
+                        ))}
+                      </div>
+                      {/* Requirement Labels */}
+                      <div className="grid grid-cols-1 gap-1">
+                        {passwordChecks.map((check) => {
+                          const isMet = check.test(password);
+                          return (
+                            <div key={check.label} className="flex items-center gap-2">
+                              {isMet ? (
+                                <Check className="h-3 w-3 text-primary" />
+                              ) : (
+                                <X className="h-3 w-3 text-muted-foreground" />
+                              )}
+                              <span className={`text-[11px] ${isMet ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                                {check.label}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
