@@ -8,7 +8,7 @@ import LoginPage from "./pages/Login";
 import SignupPage from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import OnboardingPage from "./pages/Onboarding";
-import UpgradePage from "./pages/Upgrade";
+import UpgradePage from "./pages/upgrade";
 import PublicProfile from "./pages/PublicProfile";
 import AboutPage from "./pages/About";
 import BlogPage from "./pages/Blog";
