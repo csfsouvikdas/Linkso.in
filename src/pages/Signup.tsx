@@ -69,8 +69,9 @@ export default function SignupPage() {
       toast.error("Please enter the 6-digit code");
       return;
     }
+
     setVerifying(true);
-    const { error } = await supabase.auth.verifyOtp({
+    const { error, data } = await supabase.auth.verifyOtp({
       email,
       token: otp,
       type: "signup",
@@ -78,9 +79,15 @@ export default function SignupPage() {
     setVerifying(false);
     if (error) {
       toast.error(error.message);
-    } else {
-      toast.success("Email verified! Welcome to Linktree 🎉");
+      return;
+    }
+    
+    // Verify the session was created successfully
+    if (data?.session) {
+      toast.success("Email verified! Welcome to Linkso 🎉");
       navigate("/dashboard");
+    } else {
+      toast.error("Verification failed. Please try again.");
     }
   };
 
@@ -100,11 +107,11 @@ export default function SignupPage() {
         <div className="text-center space-y-2">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <TreesIcon className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-heading font-bold">Linktree</span>
+            <span className="text-2xl font-heading font-bold">Linkso</span>
           </Link>
           {step === "form" ? (
             <>
-              <h1 className="text-3xl font-heading font-bold">Create your Linktree</h1>
+              <h1 className="text-3xl font-heading font-bold">Create your Linkso</h1>
               <p className="text-muted-foreground">Free forever. No credit card needed.</p>
             </>
           ) : (
@@ -125,10 +132,21 @@ export default function SignupPage() {
               className="w-full h-11 gap-3 font-medium"
               type="button"
               onClick={async () => {
-                const { error } = await lovable.auth.signInWithOAuth("google", {
-                  redirect_uri: window.location.origin,
-                });
-                if (error) toast.error(error.message);
+                try {
+                  const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: "google",
+                    options: { redirectTo: `${window.location.origin}/dashboard` },
+                  });
+                  if (error) {
+                    const lovableResult = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+                    if (lovableResult.error) toast.error(lovableResult.error.message);
+                    else if (lovableResult.redirected) return;
+                  } else if (data?.url) {
+                    window.location.href = data.url;
+                  }
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Google sign-up failed");
+                }
               }}
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -149,41 +167,41 @@ export default function SignupPage() {
               </div>
             </div>
 
-          <form onSubmit={handleSignup} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Display Name</Label>
-              <Input id="name" placeholder="Jane Doe" value={name} onChange={e => setName(e.target.value)} required className="bg-secondary/50 border-border" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <div className="relative">
-                <Input id="username" placeholder="janedoe" value={username} onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))} required className="bg-secondary/50 border-border pr-10" />
-                {username.length >= 3 && !checkingUsername && usernameAvailable !== null && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    {usernameAvailable ? <Check className="h-4 w-4 text-primary" /> : <X className="h-4 w-4 text-destructive" />}
-                  </div>
+            <form onSubmit={handleSignup} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Display Name</Label>
+                <Input id="name" placeholder="Jane Doe" value={name} onChange={e => setName(e.target.value)} required className="bg-secondary/50 border-border" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <div className="relative">
+                  <Input id="username" placeholder="janedoe" value={username} onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))} required className="bg-secondary/50 border-border pr-10" />
+                  {username.length >= 3 && !checkingUsername && usernameAvailable !== null && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {usernameAvailable ? <Check className="h-4 w-4 text-primary" /> : <X className="h-4 w-4 text-destructive" />}
+                    </div>
+                  )}
+                </div>
+                {username.length >= 3 && !checkingUsername && usernameAvailable === false && (
+                  <p className="text-xs text-destructive">Username is taken</p>
+                )}
+                {username.length >= 3 && !checkingUsername && usernameAvailable === true && (
+                  <p className="text-xs text-primary">Username is available!</p>
                 )}
               </div>
-              {username.length >= 3 && !checkingUsername && usernameAvailable === false && (
-                <p className="text-xs text-destructive">Username is taken</p>
-              )}
-              {username.length >= 3 && !checkingUsername && usernameAvailable === true && (
-                <p className="text-xs text-primary">Username is available!</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required className="bg-secondary/50 border-border" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} className="bg-secondary/50 border-border" />
-            </div>
-            <Button variant="hero" className="w-full" type="submit" disabled={loading}>
-              {loading ? "Creating account..." : "Create your Linktree"}
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </form>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required className="bg-secondary/50 border-border" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} className="bg-secondary/50 border-border" />
+              </div>
+              <Button variant="hero" className="w-full" type="submit" disabled={loading}>
+                {loading ? "Creating account..." : "Create your Linkso"}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </form>
           </div>
         ) : (
           <div className="bg-card rounded-2xl p-8 space-y-6 shadow-sm border border-border">

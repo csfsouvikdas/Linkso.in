@@ -7,6 +7,8 @@ import Index from "./pages/Index";
 import LoginPage from "./pages/Login";
 import SignupPage from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
+import OnboardingPage from "./pages/Onboarding";
+import UpgradePage from "./pages/Upgrade";
 import PublicProfile from "./pages/PublicProfile";
 import AboutPage from "./pages/About";
 import BlogPage from "./pages/Blog";
@@ -28,6 +30,8 @@ const App = () => (
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/upgrade" element={<UpgradePage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/contact" element={<ContactPage />} />

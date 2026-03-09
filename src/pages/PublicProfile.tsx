@@ -4,153 +4,301 @@ import { supabase } from "@/integrations/supabase/client";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import { platformLabels, type Platform } from "@/utils/detectPlatform";
 import { motion } from "framer-motion";
-import { TreesIcon } from "lucide-react";
-import type { UserProfile, UserLink } from "@/types";
+import { TreesIcon, Star, Eye, EyeOff, Lock, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { AdPlaceholder } from "@/components/AdBanner";
+import type { UserLink } from "@/types";
+
+const FONT_MAP: Record<string, string> = {
+  default: "font-sans",
+  serif: "font-serif",
+  mono: "font-mono",
+  rounded: "font-heading",
+  elegant: "font-serif italic",
+  bold: "font-bold tracking-tight",
+};
+
+// ── Ad Banner for Public Profile ─────────────────────────────────────────────
+// Shown only to visitors of FREE user profiles.
+// Positioned just above the footer branding so it doesn't break the profile layout.
+function ProfileAdBanner({ isPro }: { isPro: boolean }) {
+  if (isPro) return null;
+  return (
+    <div className="w-full mt-2">
+      <AdPlaceholder isPro={false} label="Ad · Remove with Pro" />
+    </div>
+  );
+}
+
+function AnimatedBg({ type, isDark }: { type: string; isDark: boolean }) {
+  if (!type || type === "none") return null;
+  const base = isDark ? "255,255,255" : "0,0,0";
+  if (type === "particles") return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-10">
+      {Array.from({ length: 20 }).map((_, i) => (
+        <div key={i} className="absolute rounded-full animate-pulse" style={{ width: `${Math.random()*8+3}px`, height: `${Math.random()*8+3}px`, left: `${Math.random()*100}%`, top: `${Math.random()*100}%`, background: `rgba(${base},${Math.random()*0.12+0.04})`, animationDuration: `${Math.random()*3+2}s`, animationDelay: `${Math.random()*2}s` }} />
+      ))}
+    </div>
+  );
+  if (type === "aurora") return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-10">
+      <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-20 blur-3xl" style={{ background: "linear-gradient(135deg,#667eea,#764ba2)", animation: "pulse 6s ease-in-out infinite" }} />
+      <div className="absolute -bottom-32 -right-32 w-[500px] h-[500px] rounded-full opacity-20 blur-3xl" style={{ background: "linear-gradient(135deg,#f093fb,#f5576c)", animation: "pulse 8s ease-in-out infinite reverse" }} />
+    </div>
+  );
+  if (type === "gradient-shift") return (
+    <div className="absolute inset-0 pointer-events-none z-10" style={{ background: "linear-gradient(270deg,#667eea22,#764ba222,#f093fb22)", backgroundSize: "400% 400%", animation: "gradientShift 8s ease infinite" }} />
+  );
+  if (type === "waves") return (
+    <div className="absolute inset-0 pointer-events-none z-10" style={{ background: `radial-gradient(ellipse at 20% 50%,rgba(${base},0.07) 0%,transparent 50%),radial-gradient(ellipse at 80% 50%,rgba(${base},0.07) 0%,transparent 50%)`, animation: "pulse 4s ease-in-out infinite" }} />
+  );
+  if (type === "confetti") return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-10">
+      {Array.from({ length: 22 }).map((_, i) => (
+        <div key={i} className="absolute animate-bounce" style={{ width: "7px", height: "7px", left: `${Math.random()*100}%`, top: `${Math.random()*100}%`, background: ["#667eea","#f093fb","#f5576c","#22c55e","#fbbf24"][i%5], borderRadius: Math.random()>0.5?"50%":"2px", opacity: 0.35, animationDuration: `${Math.random()*2+1}s`, animationDelay: `${Math.random()*2}s` }} />
+      ))}
+    </div>
+  );
+  return null;
+}
 
 export default function PublicProfile() {
   const { username } = useParams<{ username: string }>();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [links, setLinks] = useState<UserLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [passwordRequired, setPasswordRequired] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passwordError, setPasswordError] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
-  useEffect(() => {
-    if (!username) return;
-    loadProfile();
-  }, [username]);
+  useEffect(() => { if (username) loadProfile(); }, [username]);
 
   const loadProfile = async () => {
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("username", username!.toLowerCase())
-      .maybeSingle();
+    const { data } = await supabase.from("profiles").select("*").eq("username", username!.toLowerCase()).maybeSingle();
+    if (!data) { setNotFound(true); setLoading(false); return; }
+    setProfile(data);
+    if (data.is_password_protected && data.profile_password) { setPasswordRequired(true); setLoading(false); return; }
+    await loadLinksAndTrack(data);
+  };
 
-    if (!profileData) {
-      setNotFound(true);
-      setLoading(false);
-      return;
+  const loadLinksAndTrack = async (p: any) => {
+    const { data: linksData } = await supabase.from("links").select("*").eq("user_id", p.id).eq("is_active", true).order("position");
+    if (linksData) {
+      const now = new Date();
+      const filtered = linksData.filter((l: any) => {
+        if (l.scheduled_start && new Date(l.scheduled_start) > now) return false;
+        if (l.scheduled_end && new Date(l.scheduled_end) < now) return false;
+        return true;
+      });
+      filtered.sort((a: any, b: any) => (b.is_priority?1:0)-(a.is_priority?1:0));
+      setLinks(filtered as UserLink[]);
     }
-
-    setProfile(profileData as UserProfile);
-
-    const { data: linksData } = await supabase
-      .from("links")
-      .select("*")
-      .eq("user_id", profileData.id)
-      .eq("is_active", true)
-      .order("position");
-
-    if (linksData) setLinks(linksData as UserLink[]);
-
-    // Record profile view
-    await supabase.from("analytics_views").insert({ user_id: profileData.id });
-
+    await supabase.from("analytics_views").insert({ user_id: p.id });
     setLoading(false);
   };
 
   const handleLinkClick = async (link: UserLink) => {
-    await supabase.from("analytics_clicks").insert({
-      link_id: link.id,
-      user_id: link.user_id,
-    });
+    await supabase.from("analytics_clicks").insert({ link_id: link.id, user_id: link.user_id });
     window.open(link.url, "_blank");
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  const handlePasswordSubmit = async () => {
+    if (passwordInput === profile?.profile_password) { setPasswordRequired(false); setPasswordError(false); await loadLinksAndTrack(profile); }
+    else setPasswordError(true);
+  };
 
-  if (notFound) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center text-center px-4">
-        <div>
-          <h1 className="text-4xl font-heading font-bold mb-4">Page not found</h1>
-          <p className="text-muted-foreground mb-6">This username hasn't been claimed yet.</p>
-          <Link to="/signup" className="text-primary hover:underline font-medium">
-            Claim it now →
-          </Link>
+  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+
+  if (notFound) return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center text-center px-4 gap-6">
+      <TreesIcon className="h-12 w-12 text-primary" />
+      <h1 className="text-3xl font-heading font-bold">Page not found</h1>
+      <p className="text-muted-foreground">This username hasn't been claimed yet.</p>
+      <Button variant="hero" asChild><Link to="/signup">Claim it now →</Link></Button>
+    </div>
+  );
+
+  if (passwordRequired) return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="w-full max-w-sm space-y-6">
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto"><Lock className="h-8 w-8 text-primary" /></div>
+          <h1 className="text-2xl font-heading font-bold">Protected Profile</h1>
+          <p className="text-sm text-muted-foreground">Enter the password to view <strong>@{username}</strong></p>
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
+          <div className="relative">
+            <Input type={showPw?"text":"password"} value={passwordInput} onChange={e=>{setPasswordInput(e.target.value);setPasswordError(false);}} onKeyDown={e=>e.key==="Enter"&&handlePasswordSubmit()} placeholder="Enter password" className={passwordError?"border-destructive":""} />
+            <button onClick={()=>setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">{showPw?<EyeOff className="h-4 w-4"/>:<Eye className="h-4 w-4"/>}</button>
+          </div>
+          {passwordError && <p className="text-xs text-destructive">Incorrect password.</p>}
+          <Button variant="hero" className="w-full" onClick={handlePasswordSubmit}>Unlock Profile</Button>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
-  const bgStyle = profile?.theme === "gradient"
-    ? "linear-gradient(135deg, #667eea, #764ba2)"
-    : profile?.bg_color || "#FFFFFF";
-  const isDark = profile?.theme === "dark" || profile?.theme === "gradient" ||
-    (profile?.bg_color && parseInt(profile.bg_color.replace("#", ""), 16) < 0x808080);
+  // ── Styles ──────────────────────────────────────────────────────────────────
+  const isPro = !!(profile?.is_pro);
+  const isVerified = isPro && profile?.is_verified;
+  const hideBranding = isPro && profile?.hide_branding;
+  const fontClass = isPro ? (FONT_MAP[profile?.custom_font] || "font-sans") : "font-sans";
+  const animatedBg = isPro ? (profile?.animated_bg || "none") : "none";
+  const hasBgImage = isPro && profile?.bg_image_url;
+
+  const isDark = ["dark","gradient"].includes(profile?.theme||"") || (profile?.bg_color && parseInt(profile.bg_color.replace("#",""),16)<0x808080) || hasBgImage;
   const textColor = isDark ? "#ffffff" : "#1a1a1a";
-  const btnRadius = profile?.button_style === "pill" ? "9999px" : profile?.button_style === "sharp" ? "0" : "16px";
+  const subColor = isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)";
+  const btnBg = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.05)";
+  const btnBorder = isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.09)";
+  const btnRadius = profile?.button_style==="pill"?"9999px":profile?.button_style==="sharp"?"4px":"16px";
+
+  const pageBg: React.CSSProperties = hasBgImage
+    ? { backgroundImage: `url(${profile.bg_image_url})`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }
+    : profile?.theme==="gradient"
+    ? { background: "linear-gradient(135deg,#667eea,#764ba2)" }
+    : { background: profile?.bg_color || "#ffffff" };
+
+  const socialLinks = links.filter(l=>(l as any).is_social_icon);
+  const regularLinks = links.filter(l=>!(l as any).is_social_icon);
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-4 py-12" style={{ background: bgStyle, color: textColor }}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md space-y-6 relative"
-      >
-        {/* Profile header */}
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center border-2" style={{ borderColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)", background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)" }}>
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-3xl font-heading font-bold">
-                {profile?.display_name?.[0]?.toUpperCase() || "?"}
-              </span>
-            )}
-          </div>
-          <div>
-            <h1 className="text-xl font-heading font-bold">{profile?.display_name}</h1>
-            {profile?.bio && <p className="text-sm mt-1" style={{ opacity: 0.7 }}>{profile.bio}</p>}
-          </div>
-        </div>
+    <>
+      <style>{`@keyframes gradientShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}`}</style>
+      <div className={`min-h-screen relative flex flex-col items-center ${fontClass}`} style={{ ...pageBg, color: textColor }}>
 
-        {/* Links with platform icons */}
-        <div className="space-y-3">
-          {links.map((link, i) => (
-            <motion.button
-              key={link.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              onClick={() => handleLinkClick(link)}
-              className="w-full p-4 flex items-center gap-4 cursor-pointer text-left group transition-transform hover:scale-[1.02]"
-              style={{
-                borderRadius: btnRadius,
-                background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)"}`,
-                backdropFilter: "blur(8px)",
-              }}
-            >
-              <div className="w-10 h-10 flex items-center justify-center shrink-0" style={{ borderRadius: btnRadius === "0" ? "4px" : "12px", background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.07)" }}>
-                <PlatformIcon platform={link.platform} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="font-medium block">{link.title}</span>
-                <span className="text-xs block" style={{ opacity: 0.6 }}>
-                  {platformLabels[link.platform as Platform] || "Link"}
-                </span>
-              </div>
-            </motion.button>
-          ))}
-        </div>
+        {/* Dark overlay for bg image */}
+        {hasBgImage && <div className="absolute inset-0 bg-black/40 z-0" />}
+        <AnimatedBg type={animatedBg} isDark={!!isDark} />
 
-        {links.length === 0 && (
-          <p className="text-center text-sm" style={{ opacity: 0.5 }}>No links added yet.</p>
+        {/* ── Top ad banner — free profiles only ── */}
+        {!isPro && (
+          <div className="relative z-20 w-full max-w-md px-4 pt-6">
+            <div style={{
+              background: isDark ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.65)",
+              backdropFilter: "blur(12px)",
+              borderRadius: "14px",
+              border: isDark ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(0,0,0,0.08)",
+              overflow: "hidden",
+            }}>
+              <AdPlaceholder isPro={false} label="Ad · Upgrade to Pro to remove ads" />
+            </div>
+          </div>
         )}
 
-        {/* Branding */}
-        <div className="flex items-center justify-center gap-2 pt-8" style={{ opacity: 0.3 }}>
-          <TreesIcon className="h-4 w-4" />
-          <Link to="/" className="text-xs">Made with Linktree</Link>
+        {/* ── Profile content ── */}
+        <div className="relative z-20 w-full max-w-md px-4 py-10 flex flex-col items-center gap-6">
+
+          {/* Avatar */}
+          <motion.div initial={{opacity:0,scale:0.8}} animate={{opacity:1,scale:1}} className="relative">
+            <div className="w-24 h-24 rounded-full overflow-hidden border-4 shadow-xl"
+              style={{ borderColor: isDark?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.9)", background: isDark?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.05)" }}>
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex items-center justify-center text-3xl font-bold">{profile?.display_name?.[0]?.toUpperCase()||"?"}</div>}
+            </div>
+            {isVerified && (
+              <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-amber-500 rounded-full flex items-center justify-center border-2 border-white shadow-md">
+                <Star className="h-3.5 w-3.5 text-white fill-white" />
+              </div>
+            )}
+          </motion.div>
+
+          {/* Name + bio */}
+          <motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{delay:0.1}} className="text-center space-y-1.5">
+            <h1 className="text-xl font-bold flex items-center justify-center gap-2">
+              {profile?.display_name}
+              {isVerified && <Star className="h-4 w-4 fill-amber-400 text-amber-400 shrink-0" />}
+            </h1>
+            {profile?.bio && <p className="text-sm leading-relaxed max-w-xs" style={{ color: subColor }}>{profile.bio}</p>}
+          </motion.div>
+
+          {/* Social icons */}
+          {socialLinks.length>0 && (
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.15}} className="flex gap-3 flex-wrap justify-center">
+              {socialLinks.map((link,i)=>(
+                <motion.button key={link.id} initial={{opacity:0,scale:0.7}} animate={{opacity:1,scale:1}} transition={{delay:0.15+i*0.05}}
+                  onClick={()=>handleLinkClick(link)} className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                  style={{background:btnBg,border:`1px solid ${btnBorder}`,backdropFilter:"blur(8px)"}} title={link.title}>
+                  <PlatformIcon platform={link.platform} />
+                </motion.button>
+              ))}
+            </motion.div>
+          )}
+
+          {/* Regular links */}
+          <div className="w-full space-y-3">
+            {regularLinks.map((link,i)=>(
+              <motion.button key={link.id} initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} transition={{delay:0.2+i*0.07}}
+                onClick={()=>handleLinkClick(link)}
+                className="w-full flex items-center gap-4 p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+                style={{borderRadius:btnRadius,background:btnBg,border:`1px solid ${btnBorder}`,backdropFilter:"blur(12px)"}}>
+                <div className="w-10 h-10 flex items-center justify-center shrink-0"
+                  style={{borderRadius:btnRadius==="4px"?"4px":"12px",background:isDark?"rgba(255,255,255,0.10)":"rgba(0,0,0,0.07)"}}>
+                  <PlatformIcon platform={link.platform} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    {(link as any).is_priority && <Star className="h-3 w-3 text-amber-400 fill-amber-400 shrink-0" />}
+                    <span className="font-semibold text-sm truncate">{link.title}</span>
+                  </div>
+                  <span className="text-xs truncate" style={{color:subColor}}>{platformLabels[link.platform as Platform]||"Link"}</span>
+                </div>
+                <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-40" />
+              </motion.button>
+            ))}
+            {links.length===0 && <p className="text-center text-sm py-8" style={{color:subColor}}>No links yet.</p>}
+          </div>
+
+          {/* ── Mid-page ad for free profiles (after links) ── */}
+          {!isPro && links.length > 2 && (
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.6}} className="w-full">
+              <div style={{
+                background: isDark ? "rgba(0,0,0,0.40)" : "rgba(255,255,255,0.60)",
+                backdropFilter: "blur(12px)",
+                borderRadius: "14px",
+                border: isDark ? "1px solid rgba(255,255,255,0.09)" : "1px solid rgba(0,0,0,0.07)",
+                overflow: "hidden",
+              }}>
+                <AdPlaceholder isPro={false} label="Ad · Upgrade to Pro to remove" />
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── BRANDING ── */}
+          {hideBranding ? null : (
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.55}} className="w-full mt-2">
+              {!isPro ? (
+                <div className="w-full rounded-2xl overflow-hidden border" style={{ borderColor: isDark?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.08)", background: isDark?"rgba(0,0,0,0.35)":"rgba(255,255,255,0.7)", backdropFilter:"blur(12px)" }}>
+                  <div className="px-5 py-4 flex flex-col items-center gap-3 text-center">
+                    <div className="flex items-center gap-2">
+                      <TreesIcon className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-bold" style={{color:textColor}}>Made with Linkso</span>
+                    </div>
+                    <p className="text-xs" style={{color:subColor}}>Create your own free link-in-bio page</p>
+                    <Link to="/signup">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold text-white transition-transform hover:scale-105" style={{background:"linear-gradient(135deg,#667eea,#764ba2)"}}>
+                        <TreesIcon className="h-3.5 w-3.5" />Create your Linkso — Free
+                      </div>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-1.5" style={{color:subColor}}>
+                  <TreesIcon className="h-3.5 w-3.5" />
+                  <Link to="/" className="text-xs hover:opacity-80 transition-opacity">Linkso</Link>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Bottom spacer */}
+          <div className="h-6" />
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </>
   );
 }

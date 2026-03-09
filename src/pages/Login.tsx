@@ -27,10 +27,21 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
-    const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (error) toast.error(error.message);
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/dashboard` },
+      });
+      if (error) {
+        const lovableResult = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+        if (lovableResult.error) toast.error(lovableResult.error.message);
+        else if (lovableResult.redirected) return;
+      } else if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Google sign-in failed");
+    }
   };
 
   return (
@@ -40,7 +51,7 @@ export default function LoginPage() {
         <div className="text-center space-y-2">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <TreesIcon className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-heading font-bold">Linktree</span>
+            <span className="text-2xl font-heading font-bold">Linkso</span>
           </Link>
           <h1 className="text-3xl font-heading font-bold">Welcome back</h1>
           <p className="text-muted-foreground">Log in to manage your links</p>

@@ -39,7 +39,7 @@ export default function ContactPage() {
                 {[
                   { icon: Mail, title: "Email Us", detail: "support@linktree.app" },
                   { icon: MessageSquare, title: "Live Chat", detail: "Available Mon–Fri, 9am–5pm" },
-                  { icon: MapPin, title: "Location", detail: "San Francisco, CA" },
+                  { icon: MapPin, title: "Location", detail: "NAVI MUMBAI , MH" },
                 ].map((item) => (
                   <div key={item.title} className="flex items-start gap-4">
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
