@@ -409,17 +409,8 @@ export default function UpgradePage() {
           </p>
         </div>
 
-        {/* Debug log — remove in production */}
-        {debugLog.length > 0 && (
-          <details className="mt-10 w-full max-w-3xl">
-            <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-              🔧 Debug log ({debugLog.length} entries)
-            </summary>
-            <pre className="mt-2 p-4 bg-secondary/40 rounded-xl text-[11px] font-mono text-muted-foreground overflow-x-auto whitespace-pre-wrap border border-border">
-              {debugLog.join("\n")}
-            </pre>
-          </details>
-        )}
+       
+        
       </div>
     </div>
   );
