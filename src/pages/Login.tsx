@@ -20,12 +20,16 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
       toast.error(error.message);
-    } else {
+    } else if (data?.session) {
+      // Session is automatically persisted by the Supabase client in localStorage.
+      // Navigate only after we confirm a session exists.
       navigate("/dashboard");
+    } else {
+      toast.error("Login failed. Please try again.");
     }
   };
 

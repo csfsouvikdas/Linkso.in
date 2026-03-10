@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { TreesIcon, ArrowRight, Check, X, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { TreesIcon, ArrowRight, Check, X, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -15,34 +15,55 @@ const passwordChecks = [
 ];
 
 export default function ResetPasswordPage() {
-  const [password, setPassword]           = useState("");
-  const [confirm, setConfirm]             = useState("");
-  const [showPassword, setShowPassword]   = useState(false);
-  const [loading, setLoading]             = useState(false);
-  const [validSession, setValidSession]   = useState(false);
-  const [checking, setChecking]           = useState(true);
+  const [password, setPassword]         = useState("");
+  const [confirm, setConfirm]           = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading]           = useState(false);
+  const [validSession, setValidSession] = useState(false);
+  const [checking, setChecking]         = useState(true);
   const navigate = useNavigate();
 
-  const passedChecks   = passwordChecks.filter(c => c.test(password));
+  const passedChecks    = passwordChecks.filter(c => c.test(password));
   const allChecksPassed = passedChecks.length === passwordChecks.length;
   const passwordsMatch  = password === confirm && confirm.length > 0;
 
   useEffect(() => {
-    // Listen for the recovery event or an existing session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "PASSWORD_RECOVERY" || session) {
+    // Supabase puts the recovery tokens in the URL hash:
+    // #access_token=...&refresh_token=...&type=recovery
+    // We need to extract them and set the session manually.
+    const hash = window.location.hash;
+
+    if (hash && hash.includes("type=recovery")) {
+      const params = new URLSearchParams(hash.replace("#", ""));
+      const accessToken  = params.get("access_token");
+      const refreshToken = params.get("refresh_token");
+
+      if (accessToken && refreshToken) {
+        supabase.auth
+          .setSession({ access_token: accessToken, refresh_token: refreshToken })
+          .then(({ error }) => {
+            if (error) {
+              console.error("setSession error:", error.message);
+              setValidSession(false);
+            } else {
+              setValidSession(true);
+              // Clean the hash from the URL so it's not reused
+              window.history.replaceState(null, "", window.location.pathname);
+            }
+            setChecking(false);
+          });
+        return; // wait for the async setSession above
+      }
+    }
+
+    // Fallback: check if there's already an active session (e.g. user refreshed the page
+    // after we already cleaned the hash above and set the session)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
         setValidSession(true);
       }
       setChecking(false);
     });
-
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setValidSession(true);
-      setChecking(false);
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   const handleReset = async (e: React.FormEvent) => {
@@ -65,6 +86,8 @@ export default function ResetPasswordPage() {
       toast.error(error.message);
     } else {
       toast.success("Password updated successfully!");
+      // Sign out so they log in fresh with the new password
+      await supabase.auth.signOut();
       navigate("/login");
     }
   };
@@ -103,12 +126,10 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 overflow-hidden">
-      {/* Decorative Background Elements */}
       <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-md space-y-8 relative z-10">
-        {/* Header */}
         <div className="text-center space-y-2">
           <Link to="/" className="inline-flex items-center gap-2 mb-6 group">
             <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
@@ -144,7 +165,6 @@ export default function ResetPasswordPage() {
                 </button>
               </div>
 
-              {/* Password strength UI */}
               {password.length > 0 && (
                 <div className="space-y-3 pt-2">
                   <div className="flex gap-1.5">

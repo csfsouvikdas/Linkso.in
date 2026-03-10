@@ -10,37 +10,34 @@ import { toast } from "sonner";
 
 const passwordChecks = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
-  { label: "One uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
-  { label: "One number",           test: (p: string) => /[0-9]/.test(p) },
-  { label: "One special character",test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+  { label: "One uppercase letter",  test: (p: string) => /[A-Z]/.test(p) },
+  { label: "One number",            test: (p: string) => /[0-9]/.test(p) },
+  { label: "One special character", test: (p: string) => /[^A-Za-z0-9]/.test(p) },
 ];
 
 export default function SignupPage() {
-  const [name, setName] = useState("");
+  const [name, setName]         = useState("");
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
-  
-  const [step, setStep] = useState<"signup" | "verify">("signup");
-  const [loading, setLoading] = useState(false);
+  const [otp, setOtp]           = useState("");
+
+  const [step, setStep]                       = useState<"signup" | "verify">("signup");
+  const [loading, setLoading]                 = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
-  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [checkingUsername, setCheckingUsername]   = useState(false);
   const [showPasswordHints, setShowPasswordHints] = useState(false);
-  
-  const [timer, setTimer] = useState(0);
-  
+  const [timer, setTimer]                     = useState(0);
+
   const navigate = useNavigate();
 
-  const passedChecks = passwordChecks.filter(c => c.test(password));
+  const passedChecks    = passwordChecks.filter(c => c.test(password));
   const allChecksPassed = passedChecks.length === passwordChecks.length;
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (timer > 0) {
-      interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
+      interval = setInterval(() => setTimer(prev => prev - 1), 1000);
     }
     return () => clearInterval(interval);
   }, [timer]);
@@ -66,7 +63,7 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!usernameAvailable) return toast.error("Please choose an available username");
-    if (!allChecksPassed) return toast.error("Please meet all password requirements");
+    if (!allChecksPassed)   return toast.error("Please meet all password requirements");
 
     setLoading(true);
     const { error } = await supabase.auth.signUp({
@@ -76,14 +73,13 @@ export default function SignupPage() {
         data: { display_name: name, username: username.toLowerCase() },
       },
     });
+    setLoading(false);
 
     if (error) {
       toast.error(error.message);
-      setLoading(false);
       return;
     }
 
-    setLoading(false);
     setStep("verify");
     setTimer(60);
     toast.success("Verification code sent!");
@@ -91,13 +87,8 @@ export default function SignupPage() {
 
   const handleResendOtp = async () => {
     if (timer > 0) return;
-    
     setLoading(true);
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email: email,
-    });
-
+    const { error } = await supabase.auth.resend({ type: "signup", email });
     setLoading(false);
     if (error) {
       toast.error(error.message);
@@ -114,7 +105,7 @@ export default function SignupPage() {
     const { data, error } = await supabase.auth.verifyOtp({
       email,
       token: otp,
-      type: 'signup',
+      type: "signup",
     });
 
     if (error) {
@@ -123,6 +114,7 @@ export default function SignupPage() {
       return;
     }
 
+    // Upsert the profile row now that we have a confirmed user
     if (data?.user) {
       await supabase.from("profiles").upsert({
         id: data.user.id,
@@ -134,6 +126,8 @@ export default function SignupPage() {
 
     setLoading(false);
     toast.success("Account verified! Welcome to Linkso 🎉");
+
+    // verifyOtp sets the session automatically — navigate after it's set
     navigate("/dashboard");
   };
 
@@ -151,8 +145,8 @@ export default function SignupPage() {
             {step === "signup" ? "Create your Linkso" : "Verify Email"}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {step === "signup" 
-              ? "Free forever. No credit card needed." 
+            {step === "signup"
+              ? "Free forever. No credit card needed."
               : `Enter the 8-digit code sent to ${email}`}
           </p>
         </div>
@@ -176,7 +170,7 @@ export default function SignupPage() {
                       });
                       if (lovableResult.error) toast.error(lovableResult.error.message);
                     } else if (data?.url) window.location.href = data.url;
-                  } catch (e) {
+                  } catch {
                     toast.error("Google sign-up failed");
                   }
                 }}
@@ -204,7 +198,14 @@ export default function SignupPage() {
                 <div className="space-y-2">
                   <Label htmlFor="username">Username</Label>
                   <div className="relative">
-                    <Input id="username" placeholder="username" value={username} onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))} required className="bg-secondary/50 pr-10" />
+                    <Input
+                      id="username"
+                      placeholder="username"
+                      value={username}
+                      onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
+                      required
+                      className="bg-secondary/50 pr-10"
+                    />
                     {username.length >= 3 && !checkingUsername && (
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
                         {usernameAvailable ? <Check className="h-4 w-4 text-primary" /> : <X className="h-4 w-4 text-destructive" />}
@@ -220,13 +221,13 @@ export default function SignupPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    value={password} 
-                    onChange={e => {setPassword(e.target.value); setShowPasswordHints(true);}} 
-                    required 
-                    className="bg-secondary/50" 
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={e => { setPassword(e.target.value); setShowPasswordHints(true); }}
+                    required
+                    className="bg-secondary/50"
                   />
                   {showPasswordHints && (
                     <div className="space-y-2 pt-1">
@@ -236,15 +237,11 @@ export default function SignupPage() {
                         ))}
                       </div>
                       <div className="grid grid-cols-1 gap-1">
-                        {passwordChecks.map((check) => {
+                        {passwordChecks.map(check => {
                           const isMet = check.test(password);
                           return (
                             <div key={check.label} className="flex items-center gap-2">
-                              {isMet ? (
-                                <Check className="h-3 w-3 text-primary" />
-                              ) : (
-                                <X className="h-3 w-3 text-muted-foreground" />
-                              )}
+                              {isMet ? <Check className="h-3 w-3 text-primary" /> : <X className="h-3 w-3 text-muted-foreground" />}
                               <span className={`text-[11px] ${isMet ? "text-primary font-medium" : "text-muted-foreground"}`}>
                                 {check.label}
                               </span>
@@ -284,7 +281,7 @@ export default function SignupPage() {
                 <Button variant="hero" className="w-full h-12" type="submit" disabled={loading || otp.length < 8}>
                   {loading ? "Verifying..." : "Confirm Code"}
                 </Button>
-                
+
                 <div className="text-center">
                   <button
                     type="button"
@@ -292,7 +289,7 @@ export default function SignupPage() {
                     disabled={timer > 0 || loading}
                     className="text-sm font-medium text-primary disabled:text-muted-foreground inline-flex items-center gap-2 hover:underline"
                   >
-                    <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
                     {timer > 0 ? `Resend code in ${timer}s` : "Resend code"}
                   </button>
                 </div>
