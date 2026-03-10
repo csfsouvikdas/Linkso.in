@@ -5,7 +5,7 @@ import {
   TreesIcon, LinkIcon, Palette, BarChart3, Settings, ExternalLink, Copy,
   Plus, GripVertical, Trash2, LogOut, Camera, Zap, Calendar, Star,
   QrCode, Type, Sparkles, Layout, Shield, Eye, EyeOff, Globe, Upload,
-  Lock, CheckCircle2, ChevronRight, Image as ImageIcon, X
+  Lock, CheckCircle2, ChevronRight, Image as ImageIcon, X, MessageCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,15 +84,36 @@ function ProfilePreview({ profile, links }: { profile: UserProfile | null; links
     ? { background: "linear-gradient(135deg, #667eea, #764ba2)" }
     : { background: profile?.bg_color || "#ffffff" };
 
+  const greetingText = rawProfile?.greeting_text || "Hii! 👋";
+  const showGreeting = rawProfile?.show_greeting !== false;
+
   return (
     <div className="w-[260px] rounded-[2rem] border-[6px] border-foreground/10 shadow-2xl overflow-hidden mx-auto">
       <div className="min-h-[480px] p-5 flex flex-col items-center gap-3 relative" style={{ ...bgStyle, color: textColor }}>
         {rawProfile?.bg_image_url && <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />}
         <div className="relative z-10 flex flex-col items-center gap-3 w-full">
-          <div className="w-16 h-16 rounded-full overflow-hidden border-2 mt-2" style={{ borderColor: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.1)" }}>
-            {profile?.avatar_url
-              ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-              : <div className="w-full h-full flex items-center justify-center text-xl font-bold" style={{ background: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.07)" }}>{profile?.display_name?.[0]?.toUpperCase() || "?"}</div>}
+          {/* Avatar with greeting bubble preview */}
+          <div className="relative mt-2">
+            {showGreeting && (
+              <div className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-semibold px-3 py-1.5 rounded-full shadow-md z-20"
+                style={{
+                  background: isDark ? "rgba(255,255,255,0.95)" : "#1a1a1a",
+                  color: isDark ? "#1a1a1a" : "#fff",
+                }}>
+                {greetingText}
+                <span style={{
+                  position: "absolute", bottom: "-6px", left: "50%", transform: "translateX(-50%)",
+                  width: 0, height: 0,
+                  borderLeft: "6px solid transparent", borderRight: "6px solid transparent",
+                  borderTop: `7px solid ${isDark ? "rgba(255,255,255,0.95)" : "#1a1a1a"}`,
+                }} />
+              </div>
+            )}
+            <div className="w-16 h-16 rounded-full overflow-hidden border-2" style={{ borderColor: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.1)" }}>
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                : <div className="w-full h-full flex items-center justify-center text-xl font-bold" style={{ background: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.07)" }}>{profile?.display_name?.[0]?.toUpperCase() || "?"}</div>}
+            </div>
           </div>
           <div className="text-center">
             <p className="font-bold text-sm">{profile?.display_name || "Your Name"}</p>
@@ -130,12 +151,10 @@ function LinkRow({
   onUpdate: (id: string, updates: Partial<UserLink>) => void;
   onDelete: (id: string) => void;
 }) {
-  // ✅ Local state — completely decoupled from parent while focused
   const [title, setTitle] = useState(link.title);
   const [url, setUrl]     = useState(link.url);
   const [isFocused, setIsFocused] = useState<"title" | "url" | null>(null);
 
-  // Only sync from parent when this row is NOT focused (e.g. initial load)
   useEffect(() => {
     if (isFocused !== "title") setTitle(link.title);
   }, [link.title]);
@@ -144,7 +163,6 @@ function LinkRow({
     if (isFocused !== "url") setUrl(link.url);
   }, [link.url]);
 
-  // ✅ Save to DB only on blur — no debounce needed, no revert
   const handleTitleBlur = () => {
     setIsFocused(null);
     if (title !== link.title) onUpdate(link.id, { title });
@@ -156,6 +174,7 @@ function LinkRow({
     if (url !== link.url) onUpdate(link.id, { url, platform });
   };
 
+  // Re-detect on every keystroke so the badge icon updates live
   const detectedPlatform = detectPlatform(url);
 
   return (
@@ -164,16 +183,11 @@ function LinkRow({
         ? "border-primary/40 shadow-md shadow-primary/5"
         : "border-border hover:border-border/80 hover:shadow-sm"
     }`}>
-      {/* ── Main row ── */}
       <div className="flex items-center gap-3 p-3">
         <GripVertical className="h-5 w-5 text-muted-foreground/30 cursor-grab shrink-0 hover:text-muted-foreground/60 transition-colors" />
-
-        {/* Platform icon badge */}
-        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/10">
+        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/10 transition-all">
           <PlatformIcon platform={detectedPlatform} className="text-primary h-4 w-4" />
         </div>
-
-        {/* Inputs */}
         <div className="flex-1 min-w-0 space-y-1.5">
           <input
             value={title}
@@ -192,8 +206,6 @@ function LinkRow({
             className="w-full h-8 px-3 text-xs rounded-lg bg-secondary/40 border border-transparent focus:border-primary/50 focus:bg-secondary/60 outline-none font-mono text-muted-foreground placeholder:text-muted-foreground/40 transition-all"
           />
         </div>
-
-        {/* Right controls */}
         <div className="flex items-center gap-2 shrink-0">
           <Switch
             checked={link.is_active}
@@ -208,7 +220,6 @@ function LinkRow({
         </div>
       </div>
 
-      {/* ── Status bar — shows URL preview + active state ── */}
       {url && (
         <div className="px-4 pb-3 -mt-1 flex items-center gap-2">
           <div className="flex-1 flex items-center gap-1.5 min-w-0">
@@ -223,7 +234,6 @@ function LinkRow({
         </div>
       )}
 
-      {/* ── Pro options ── */}
       {isPro && (
         <div className="px-4 pb-3 pt-1 border-t border-border/40 flex flex-wrap gap-4">
           <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
@@ -275,6 +285,8 @@ export default function Dashboard() {
   const [newPassword, setNewPassword] = useState("");
   const [bgUploading, setBgUploading] = useState(false);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
+  // Local state for greeting text input (so it doesn't debounce while typing)
+  const [greetingTextInput, setGreetingTextInput] = useState("");
   const navigate = useNavigate();
 
   const isPro = !!(profile?.is_pro && profile?.pro_expires_at && new Date(profile.pro_expires_at) > new Date());
@@ -299,6 +311,7 @@ export default function Dashboard() {
     if (!pRes.data) { navigate("/onboarding"); return; }
     if (pRes.data.is_onboarded === false) { navigate("/onboarding"); return; }
     setProfile(pRes.data as UserProfile);
+    setGreetingTextInput((pRes.data as any).greeting_text || "");
     if (lRes.data) setLinks(lRes.data as UserLink[]);
     setLoading(false);
   };
@@ -476,7 +489,6 @@ export default function Dashboard() {
           <TreesIcon className="h-5 w-5 text-primary" />
           <span className="font-heading font-bold">Linkso</span>
         </div>
-        {/* ✅ Preview button for mobile */}
         <button
           onClick={() => setShowMobilePreview(true)}
           className="flex items-center gap-1.5 text-xs font-medium text-primary border border-primary/30 bg-primary/5 rounded-full px-3 py-1.5"
@@ -757,6 +769,110 @@ export default function Dashboard() {
                     </div>
                     <Switch checked={(profile as any)?.is_verified || false} onCheckedChange={c => debProfile({ is_verified: c } as any)} disabled={!isPro} />
                   </div>
+                </section>
+
+                {/* ── GREETING BUBBLE (NEW PRO FEATURE) ── */}
+                <section className="bg-card rounded-2xl border border-border p-6 space-y-5 relative overflow-hidden">
+                  {!isPro && <FreeLock label="Custom Greeting Bubble" onClick={() => navigate("/upgrade")} />}
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <h2 className="font-semibold flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4 text-primary" />
+                        Greeting Bubble
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        Show an animated speech bubble when visitors open your profile.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={(profile as any)?.show_greeting !== false}
+                      onCheckedChange={c => debProfile({ show_greeting: c } as any)}
+                      disabled={!isPro}
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">
+                        Bubble Text <span className="text-muted-foreground font-normal">({greetingTextInput.length}/40)</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={greetingTextInput}
+                          onChange={e => setGreetingTextInput(e.target.value)}
+                          placeholder="Hii! 👋"
+                          maxLength={40}
+                          className="bg-secondary/40 border-transparent focus:border-primary flex-1"
+                          disabled={!isPro}
+                        />
+                        <Button
+                          variant="hero"
+                          size="sm"
+                          disabled={!isPro}
+                          onClick={async () => {
+                            const text = greetingTextInput.trim() || "Hii! 👋";
+                            await supabase.from("profiles").update({ greeting_text: text } as any).eq("id", user.id);
+                            setProfile(p => p ? { ...p, greeting_text: text } as any : p);
+                            toast.success("Greeting saved!");
+                          }}
+                        >
+                          Save
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        Supports emojis · defaults to "Hii! 👋" when left empty
+                      </p>
+                    </div>
+
+                    {/* Preset quick-picks */}
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-2">Quick picks:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {["Hii! 👋", "Welcome! 🎉", "Hey there! 😊", "Sup! 🤙", "Hello! 🌟", "Aloha! 🌺"].map(preset => (
+                          <button
+                            key={preset}
+                            disabled={!isPro}
+                            onClick={() => setGreetingTextInput(preset)}
+                            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+                              greetingTextInput === preset
+                                ? "border-primary bg-primary/10 text-primary font-medium"
+                                : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                            } disabled:opacity-40 disabled:cursor-not-allowed`}
+                          >
+                            {preset}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Live mini-preview of bubble */}
+                  {isPro && (
+                    <div className="bg-secondary/30 rounded-xl p-4 flex items-center gap-4">
+                      <div className="text-xs text-muted-foreground shrink-0">Preview:</div>
+                      <div className="relative">
+                        <div
+                          className="text-xs font-semibold px-3 py-1.5 rounded-full shadow-md"
+                          style={{ background: "#1a1a1a", color: "#fff" }}
+                        >
+                          {greetingTextInput || "Hii! 👋"}
+                        </div>
+                        <span style={{
+                          position: "absolute", bottom: "-7px", left: "50%", transform: "translateX(-50%)",
+                          width: 0, height: 0,
+                          borderLeft: "6px solid transparent", borderRight: "6px solid transparent",
+                          borderTop: "7px solid #1a1a1a",
+                        }} />
+                      </div>
+                      <div className="text-xs text-muted-foreground ml-2">
+                        {(profile as any)?.show_greeting !== false ? (
+                          <span className="flex items-center gap-1 text-green-500"><CheckCircle2 className="h-3 w-3" /> Visible to visitors</span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-muted-foreground"><EyeOff className="h-3 w-3" /> Hidden</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </section>
 
                 <section className="bg-card rounded-2xl border border-border p-6 relative overflow-hidden">
