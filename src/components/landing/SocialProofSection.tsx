@@ -110,7 +110,7 @@ export function SocialProofSection() {
             {[
               { value: 10000, suffix: "+", label: "Creators" },
               { value: 2000000, suffix: "+", label: "Link Clicks" },
-              { value: 150, suffix: "+", label: "Countries" },
+             
             ].map((s) => (
               <div key={s.label} className="text-center">
                 <p className="text-4xl md:text-5xl font-bold text-gray-900">

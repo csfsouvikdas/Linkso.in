@@ -19,7 +19,7 @@ export function CTASection() {
           
           <div className="relative z-10 space-y-8">
             <div className="inline-block px-4 py-1.5 mb-2 rounded-full bg-[#D1FAE5] text-[#065F46] text-sm font-medium">
-              Free to use - Till 5 links
+              Free to use - Till 3 links
             </div>
 
             <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-[#111827] max-w-2xl mx-auto leading-[1.1]">

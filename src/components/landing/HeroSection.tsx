@@ -19,7 +19,7 @@ export function HeroSection() {
         >
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-4 py-1.5 text-sm text-primary">
             <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-            Free to use — no credit card needed
+            Free to use — upto 3 links
           </div>
           
           <h1 className="text-5xl md:text-7xl font-heading font-extrabold leading-tight">
