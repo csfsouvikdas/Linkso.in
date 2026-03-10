@@ -37,7 +37,7 @@ export default function ContactPage() {
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-6">
                 {[
-                  { icon: Mail, title: "Email Us", detail: "support@linktree.app" },
+                  { icon: Mail, title: "Email Us", detail: "support@linkso.in" },
                   { icon: MessageSquare, title: "Live Chat", detail: "Available Mon–Fri, 9am–5pm" },
                   { icon: MapPin, title: "Location", detail: "NAVI MUMBAI , MH" },
                 ].map((item) => (
